@@ -1,0 +1,514 @@
+@import "tailwindcss";
+
+* {
+  font-family: "Arial Black", "Arial Bold", Gadget, sans-serif !important;
+  text-transform: uppercase !important;
+}
+
+input::placeholder,
+textarea::placeholder {
+  text-transform: uppercase !important;
+}
+
+/* ==========================================
+   TEMA BLACK / DARK MODE OVERRIDES
+   ========================================== */
+.theme-black {
+  background-color: #070b13 !important;
+  color: #f1f5f9 !important;
+}
+
+/* Convert default white components to dark luxury slate */
+.theme-black .bg-white {
+  background-color: #090e1a !important;
+}
+
+.theme-black .bg-slate-50 {
+  background-color: #0c1524 !important;
+}
+
+.theme-black .bg-slate-100 {
+  background-color: #1e293b !important;
+}
+
+.theme-black .text-slate-800 {
+  color: #f1f5f9 !important;
+}
+
+.theme-black .text-slate-900 {
+  color: #f8fafc !important;
+}
+
+.theme-black .text-slate-600 {
+  color: #94a3b8 !important;
+}
+
+.theme-black .text-slate-700 {
+  color: #cbd5e1 !important;
+}
+
+.theme-black .border-slate-100 {
+  border-color: #111a2e !important;
+}
+
+.theme-black .border-slate-200 {
+  border-color: #1e293b !important;
+}
+
+.theme-black .border-slate-300 {
+  border-color: #1e293b !important;
+}
+
+/* Style selects and inputs in dark mode */
+.theme-black select,
+.theme-black input,
+.theme-black textarea {
+  background-color: #0c1524 !important;
+  color: #f1f5f9 !important;
+  border-color: #1e293b !important;
+}
+
+.theme-black select option {
+  background-color: #020617 !important;
+  color: #f1f5f9 !important;
+}
+
+/* Adjust charts grid in black theme */
+.theme-black .recharts-cartesian-grid-horizontal line,
+.theme-black .recharts-cartesian-grid-vertical line {
+  stroke: #1e293b !important;
+  opacity: 0.4;
+}
+
+/* ==========================================
+   TEMA LIGHT MODE OVERRIDES
+   ========================================== */
+.theme-light {
+  background-color: #f8fafc !important;
+  color: #020617 !important;
+}
+
+/* Base override for any div that has bg-[#070b13] */
+.theme-light.bg-\[\#070b13\],
+.theme-light .bg-\[\#070b13\] {
+  background-color: #f8fafc !important;
+}
+
+/* Eliminate transparent gradient texts in light mode to guarantee 100% legibility */
+.theme-light .bg-clip-text {
+  background: none !important;
+  background-image: none !important;
+  color: #020617 !important;
+  -webkit-background-clip: unset !important;
+  background-clip: unset !important;
+  -webkit-text-fill-color: #020617 !important;
+}
+
+/* Override any potential background gradients on general cards to solid crisp white */
+.theme-light .bg-gradient-to-r.from-slate-900,
+.theme-light .bg-gradient-to-r.from-slate-950,
+.theme-light .bg-gradient-to-br.from-slate-950 {
+  background: #ffffff !important;
+  background-image: none !important;
+  border-color: #cbd5e1 !important;
+}
+
+/* Slate backgrounds */
+.theme-light .bg-slate-950,
+.theme-light .bg-slate-950\/80,
+.theme-light .bg-slate-950\/60,
+.theme-light .bg-slate-950\/40 {
+  background-color: #ffffff !important;
+}
+
+.theme-light .bg-slate-950\/10 {
+  background-color: #f1f5f9 !important;
+}
+
+.theme-light .bg-slate-900,
+.theme-light .bg-slate-900\/80,
+.theme-light .bg-slate-900\/60,
+.theme-light .bg-slate-900\/50,
+.theme-light .bg-slate-900\/40,
+.theme-light .bg-slate-900\/30,
+.theme-light .bg-slate-900\/20 {
+  background-color: #f1f5f9 !important;
+}
+
+.theme-light .bg-slate-800,
+.theme-light .bg-slate-800\/90 {
+  background-color: #e2e8f0 !important;
+  color: #020617 !important;
+}
+
+/* Border overrides */
+.theme-light .border-slate-900,
+.theme-light .border-slate-900\/60,
+.theme-light .border-slate-900\/50,
+.theme-light .border-slate-850,
+.theme-light .border-slate-800,
+.theme-light .border-slate-800\/80,
+.theme-light .border-slate-700 {
+  border-color: #cbd5e1 !important;
+}
+
+/* Text color overrides - Slate spectrum made darker and sharper */
+.theme-light .text-slate-50 {
+  color: #020617 !important;
+}
+.theme-light .text-slate-100 {
+  color: #020617 !important;
+}
+.theme-light .text-slate-200 {
+  color: #020617 !important;
+}
+.theme-light .text-slate-300 {
+  color: #0f172a !important;
+}
+.theme-light .text-slate-400 {
+  color: #1e293b !important;
+}
+.theme-light .text-slate-500 {
+  color: #334155 !important;
+}
+.theme-light .text-slate-550 {
+  color: #334155 !important;
+}
+.theme-light .text-slate-600 {
+  color: #0f172a !important;
+}
+.theme-light .text-slate-650 {
+  color: #0f172a !important;
+}
+.theme-light .text-slate-700 {
+  color: #020617 !important;
+}
+.theme-light .text-slate-750 {
+  color: #0f172a !important;
+}
+.theme-light .text-slate-800 {
+  color: #020617 !important;
+}
+.theme-light .text-slate-900 {
+  color: #020617 !important;
+}
+
+/* Handle specific text-white inside dark containers that got lightened */
+.theme-light .bg-slate-950 .text-white,
+.theme-light .bg-slate-900 .text-white,
+.theme-light .bg-slate-950\/60 .text-white,
+.theme-light .bg-slate-900\/60 .text-white,
+.theme-light .bg-slate-950\/40 .text-white,
+.theme-light .bg-slate-900\/40 .text-white,
+.theme-light .bg-slate-800 .text-white,
+.theme-light .bg-slate-800\/90 .text-white,
+.theme-light p.text-white,
+.theme-light span.text-white {
+  color: #020617 !important;
+}
+
+/* But preserve real buttons with solid color backings from losing white text color */
+.theme-light button.text-white,
+.theme-light .bg-teal-600 .text-white,
+.theme-light .bg-blue-600 .text-white,
+.theme-light .bg-rose-600 .text-white,
+.theme-light .bg-purple-600 .text-white,
+.theme-light .bg-gradient-to-r.from-rose-600 .text-white,
+.theme-light .bg-gradient-to-br.from-emerald-600 .text-white,
+.theme-light .bg-gradient-to-br.from-blue-600 .text-white {
+  color: #ffffff !important;
+}
+
+/* Theme active & hover tabs */
+.theme-light .text-teal-300 {
+  color: #0f766e !important;
+}
+.theme-light .bg-gradient-to-br.from-teal-500\/15 {
+  background-color: #ccfbf1 !important;
+  color: #0f766e !important;
+}
+
+/* Orange/brown elements in light mode for excellent contrast */
+.theme-light .text-orange-400 {
+  color: #c2410c !important;
+}
+
+/* Gradients for category headings */
+.theme-light .from-slate-900 {
+  --tw-gradient-from: #f8fafc !important;
+  --tw-gradient-to: rgba(248, 250, 252, 0) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+}
+.theme-light .via-indigo-950 {
+  --tw-gradient-to: rgba(224, 231, 255, 0) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), #e0e7ff !important, var(--tw-gradient-to) !important;
+}
+.theme-light .to-slate-900 {
+  --tw-gradient-to: #f8fafc !important;
+}
+
+/* Shift details background mappings for high contrast */
+.theme-light .bg-teal-950,
+.theme-light .bg-teal-950\/40,
+.theme-light .bg-teal-950\/20 {
+  background-color: #ccfbf1 !important;
+  color: #0f766e !important;
+}
+.theme-light .bg-blue-950\/40,
+.theme-light .bg-blue-950\/20 {
+  background-color: #dbeafe !important;
+  color: #1d4ed8 !important;
+}
+.theme-light .bg-amber-950\/40,
+.theme-light .bg-amber-950\/20 {
+  background-color: #fef3c7 !important;
+  color: #b45309 !important;
+}
+.theme-light .bg-rose-950\/40,
+.theme-light .bg-rose-950\/20 {
+  background-color: #fee2e2 !important;
+  color: #b91c1c !important;
+}
+.theme-light .bg-emerald-950\/50,
+.theme-light .bg-emerald-950\/25 {
+  background-color: #d1fae5 !important;
+  color: #047857 !important;
+}
+.theme-light .bg-rose-950\/25 {
+  background-color: #fee2e2 !important;
+  color: #b91c1c !important;
+}
+
+/* Text accents for light mode (teal, emerald, blue, etc) */
+.theme-light .text-teal-400,
+.theme-light .text-teal-450 {
+  color: #0f766e !important;
+}
+.theme-light .text-emerald-400 {
+  color: #15803d !important;
+}
+.theme-light .text-blue-400 {
+  color: #1d4ed8 !important;
+}
+.theme-light .text-amber-400 {
+  color: #b45309 !important;
+}
+.theme-light .text-rose-400,
+.theme-light .text-rose-450 {
+  color: #b91c1c !important;
+}
+.theme-light .text-purple-400 {
+  color: #7e22ce !important;
+}
+
+/* Table and interactive states in light mode */
+.theme-light .bg-teal-500\/10 {
+  background-color: #f0fdfa !important;
+  color: #0f766e !important;
+  border-color: #ccfbf1 !important;
+}
+.theme-light .bg-blue-500\/10 {
+  background-color: #eff6ff !important;
+  color: #1d4ed8 !important;
+  border-color: #dbeafe !important;
+}
+.theme-light .bg-amber-500\/10 {
+  background-color: #fef3c7 !important;
+  color: #b45309 !important;
+  border-color: #fde68a !important;
+}
+.theme-light .bg-rose-500\/10 {
+  background-color: #fef2f2 !important;
+  color: #b91c1c !important;
+  border-color: #fecaca !important;
+}
+.theme-light .bg-purple-500\/10 {
+  background-color: #f3e8ff !important;
+  color: #7e22ce !important;
+  border-color: #e9d5ff !important;
+}
+
+/* Option tags */
+.theme-light select option {
+  background-color: #ffffff !important;
+  color: #020617 !important;
+}
+
+/* Inputs and selects */
+.theme-light select,
+.theme-light input,
+.theme-light textarea {
+  background-color: #ffffff !important;
+  color: #020617 !important;
+  border-color: #cbd5e1 !important;
+}
+
+/* Hover effects for tabs */
+.theme-light .hover\:text-slate-200:hover {
+  color: #020617 !important;
+}
+
+.theme-light .shadow-2xl {
+  box-shadow: 0 20px 25px -5px rgba(15, 23, 42, 0.05), 0 8px 10px -6px rgba(15, 23, 42, 0.05) !important;
+}
+
+.theme-light .divide-slate-900,
+.theme-light .divide-slate-900\/60 {
+  border-color: #cbd5e1 !important;
+}
+
+/* Hide or dim background decorative ambient elements in light mode */
+.theme-light .blur-3xl {
+  opacity: 0.15;
+}
+
+/* ==========================================================
+   COOL COLOR OVERRIDES FOR DIVISION LINES & CATEGORIES
+   ========================================================== */
+
+/* Dark Mode (Default) Styles for Category Dividers */
+.category-divider-row {
+  border-top-width: 1px !important;
+  border-bottom-width: 1px !important;
+}
+
+.category-divider-row td {
+  padding-top: 10px !important;
+  padding-bottom: 10px !important;
+}
+
+.category-divider-row .bolt-icon {
+  color: #ff6b00 !important;
+  text-shadow: 0 0 10px rgba(255, 107, 0, 0.8) !important;
+  font-size: 1.15em !important;
+  display: inline-block !important;
+}
+
+/* CS LINE - Glowing Teal */
+.category-cs-line {
+  background-image: linear-gradient(to right, rgba(13, 148, 136, 0.25) 0%, rgba(15, 23, 42, 0.8) 50%, rgba(13, 148, 136, 0.25) 100%) !important;
+  border-color: rgba(45, 212, 191, 0.3) !important;
+}
+.category-cs-line .category-text {
+  color: #2dd4bf !important;
+  text-shadow: 0 0 12px rgba(45, 212, 191, 0.6) !important;
+  font-weight: 900 !important;
+}
+
+/* CS LC - Glowing Green */
+.category-cs-lc {
+  background-image: linear-gradient(to right, rgba(16, 185, 129, 0.25) 0%, rgba(15, 23, 42, 0.8) 50%, rgba(16, 185, 129, 0.25) 100%) !important;
+  border-color: rgba(52, 211, 153, 0.3) !important;
+}
+.category-cs-lc .category-text {
+  color: #34d399 !important;
+  text-shadow: 0 0 12px rgba(52, 211, 153, 0.6) !important;
+  font-weight: 900 !important;
+}
+
+/* KAPTEN KASIR - Glowing Purple */
+.category-kapten-kasir {
+  background-image: linear-gradient(to right, rgba(168, 85, 247, 0.25) 0%, rgba(15, 23, 42, 0.8) 50%, rgba(168, 85, 247, 0.25) 100%) !important;
+  border-color: rgba(192, 132, 252, 0.3) !important;
+}
+.category-kapten-kasir .category-text {
+  color: #c084fc !important;
+  text-shadow: 0 0 12px rgba(192, 132, 252, 0.6) !important;
+  font-weight: 900 !important;
+}
+
+/* KASIR - Glowing Blue */
+.category-kasir {
+  background-image: linear-gradient(to right, rgba(59, 130, 246, 0.25) 0%, rgba(15, 23, 42, 0.8) 50%, rgba(59, 130, 246, 0.25) 100%) !important;
+  border-color: rgba(96, 165, 250, 0.3) !important;
+}
+.category-kasir .category-text {
+  color: #60a5fa !important;
+  text-shadow: 0 0 12px rgba(96, 165, 250, 0.6) !important;
+  font-weight: 900 !important;
+}
+
+/* Dark Mode Staff Label Text Colors */
+.category-label-cs-line {
+  color: #2dd4bf !important;
+}
+.category-label-cs-lc {
+  color: #34d399 !important;
+}
+.category-label-kapten-kasir {
+  color: #c084fc !important;
+}
+.category-label-kasir {
+  color: #60a5fa !important;
+}
+
+
+/* Light Mode (.theme-light) Overrides for Category Dividers */
+.theme-light .category-divider-row {
+  border-color: #cbd5e1 !important;
+}
+
+.theme-light .category-divider-row .bolt-icon {
+  color: #ea580c !important;
+  text-shadow: none !important;
+}
+
+/* CS LINE - Crisp Teal */
+.theme-light .category-cs-line {
+  background-image: linear-gradient(to right, rgba(15, 118, 110, 0.12) 0%, #ffffff 50%, rgba(15, 118, 110, 0.12) 100%) !important;
+  border-top: 1px solid #ccfbf1 !important;
+  border-bottom: 1px solid #ccfbf1 !important;
+}
+.theme-light .category-cs-line .category-text {
+  color: #0f766e !important;
+  text-shadow: none !important;
+}
+
+/* CS LC - Crisp Green */
+.theme-light .category-cs-lc {
+  background-image: linear-gradient(to right, rgba(21, 128, 61, 0.12) 0%, #ffffff 50%, rgba(21, 128, 61, 0.12) 100%) !important;
+  border-top: 1px solid #d1fae5 !important;
+  border-bottom: 1px solid #d1fae5 !important;
+}
+.theme-light .category-cs-lc .category-text {
+  color: #15803d !important;
+  text-shadow: none !important;
+}
+
+/* KAPTEN KASIR - Crisp Purple */
+.theme-light .category-kapten-kasir {
+  background-image: linear-gradient(to right, rgba(126, 34, 206, 0.12) 0%, #ffffff 50%, rgba(126, 34, 206, 0.12) 100%) !important;
+  border-top: 1px solid #f3e8ff !important;
+  border-bottom: 1px solid #f3e8ff !important;
+}
+.theme-light .category-kapten-kasir .category-text {
+  color: #7e22ce !important;
+  text-shadow: none !important;
+}
+
+/* KASIR - Crisp Blue */
+.theme-light .category-kasir {
+  background-image: linear-gradient(to right, rgba(29, 78, 216, 0.12) 0%, #ffffff 50%, rgba(29, 78, 216, 0.12) 100%) !important;
+  border-top: 1px solid #dbeafe !important;
+  border-bottom: 1px solid #dbeafe !important;
+}
+.theme-light .category-kasir .category-text {
+  color: #1d4ed8 !important;
+  text-shadow: none !important;
+}
+
+/* Light Mode Staff Label Text Colors */
+.theme-light .category-label-cs-line {
+  color: #0f766e !important;
+}
+.theme-light .category-label-cs-lc {
+  color: #15803d !important;
+}
+.theme-light .category-label-kapten-kasir {
+  color: #7e22ce !important;
+}
+.theme-light .category-label-kasir {
+  color: #1d4ed8 !important;
+}
+
+

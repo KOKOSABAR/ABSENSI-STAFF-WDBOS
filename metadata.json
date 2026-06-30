@@ -1,0 +1,6 @@
+{
+  "name": "Dashboard Absensi Staff",
+  "description": "Dashboard absensi staff interaktif dengan jadwal shift bulan Juli, pencatatan waktu masuk otomatis (pagi/malam), deteksi terlambat, dan penyimpanan spreadsheet lokal.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
