@@ -101,6 +101,11 @@ function doPost(e) {
       });
     }
     
+    if (action === "read_data") {
+      var readResult = handleReadData(data.selectedMonth, data.selectedYear);
+      return jsonResponse(readResult);
+    }
+    
     return jsonResponse({ status: "error", message: "AKSI TIDAK DIKENAL" });
     
   } catch (error) {
@@ -278,6 +283,63 @@ function syncAllLogs(sheet, logs, selectedMonth, selectedYear) {
   
   var range = sheet.getRange(2, 1, rows.length, rows[0].length);
   range.setValues(rows);
+}
+
+function handleReadData(selectedMonth, selectedYear) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var monthsIndo = ["JANUARI", "FEBRUARI", "MARET", "APRIL", "MEI", "JUNI", "JULI", "AGUSTUS", "SEPTEMBER", "OKTOBER", "NOVEMBER", "DESEMBER"];
+  var monthName = monthsIndo[selectedMonth] || "JULI";
+  
+  var staffShifts = [];
+  var sheetShift = ss.getSheetByName("JADWAL_SHIFT");
+  if (sheetShift && sheetShift.getLastRow() > 1) {
+    var data = sheetShift.getDataRange().getValues();
+    for (var i = 1; i < data.length; i++) {
+      var row = data[i];
+      if (row[0] && row[3] === monthName && Number(row[4]) === selectedYear) {
+        var schedule = [];
+        for (var d = 5; d < 36; d++) {
+          schedule.push(row[d] !== undefined ? String(row[d]) : "1");
+        }
+        staffShifts.push({
+          id: row[0],
+          name: row[1],
+          category: row[2],
+          schedule: schedule
+        });
+      }
+    }
+  }
+  
+  var logs = [];
+  var sheetLogs = ss.getSheetByName("ABSENSI_LOGS");
+  if (sheetLogs && sheetLogs.getLastRow() > 1) {
+    var data = sheetLogs.getDataRange().getValues();
+    for (var i = 1; i < data.length; i++) {
+      var row = data[i];
+      if (row[0] && row[3] === monthName && Number(row[4]) === selectedYear) {
+        logs.push({
+          id: row[0],
+          staffId: row[0].split("-").slice(2).join("-"),
+          staffName: row[5],
+          category: row[6],
+          day: Number(row[2]) || 1,
+          shift: String(row[7]) || "1",
+          clockInTime: row[9] || "",
+          status: row[10] || "ON TIME",
+          timestamp: row[11] || new Date().toISOString(),
+          month: selectedMonth,
+          year: selectedYear
+        });
+      }
+    }
+  }
+  
+  return {
+    success: true,
+    staffShifts: staffShifts,
+    logs: logs
+  };
 }`;
 
   const handleSaveGasUrl = () => {

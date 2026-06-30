@@ -13,7 +13,7 @@ import ClockInLogs from "./components/ClockInLogs";
 import DashboardStats from "./components/DashboardStats";
 import ImportExport from "./components/ImportExport";
 import { Grid, Clock, ListTodo, BarChart2, Save, Calendar, RefreshCw, LayoutDashboard, Cloud, CloudOff, CloudLightning, Sun, Moon } from "lucide-react";
-import { getGasUrl, syncUpsertLog, syncDeleteLog } from "./utils/googleSheets";
+import { getGasUrl, syncUpsertLog, syncDeleteLog, fetchDataFromGoogleSheets, syncAllToGoogleSheets } from "./utils/googleSheets";
 import DatePicker from "./components/DatePicker";
 
 export default function App() {
@@ -31,6 +31,34 @@ export default function App() {
   const [syncStatus, setSyncStatus] = useState<"synced" | "syncing" | "error" | "unconfigured">(() => {
     return getGasUrl() ? "synced" : "unconfigured";
   });
+
+  const [isPulling, setIsPulling] = useState(false);
+
+  const handlePullData = async (showNotification = true) => {
+    if (!getGasUrl()) {
+      if (showNotification) alert("URL Google Apps Script belum dikonfigurasi.");
+      return;
+    }
+    setIsPulling(true);
+    setSyncStatus("syncing");
+    try {
+      const result = await fetchDataFromGoogleSheets(selectedMonth, selectedYear);
+      if (result.success && result.staffShifts && result.logs) {
+        setStaffShifts(result.staffShifts);
+        setLogs(result.logs);
+        setSyncStatus("synced");
+        if (showNotification) alert("Berhasil menarik data terbaru dari Google Sheets!");
+      } else {
+        setSyncStatus("error");
+        if (showNotification) alert(result.message || "Gagal menarik data.");
+      }
+    } catch (e) {
+      setSyncStatus("error");
+      if (showNotification) alert("Terjadi kesalahan saat menghubungkan ke Google Sheets.");
+    } finally {
+      setIsPulling(false);
+    }
+  };
 
   const [selectedMonth, setSelectedMonth] = useState<number>(() => {
     const saved = localStorage.getItem("absen_selected_month");
@@ -113,28 +141,37 @@ export default function App() {
 
   // Load shifts dynamically when month/year changes
   useEffect(() => {
+    let loadedShifts = null;
     const key = `absen_staff_shifts_${selectedYear}_${selectedMonth}`;
     const saved = localStorage.getItem(key);
     if (saved) {
       try {
-        setStaffShifts(JSON.parse(saved));
-        return;
+        loadedShifts = JSON.parse(saved);
       } catch (e) {
         console.error("Failed to parse saved staff shifts", e);
       }
     }
     // Fallback migration check for July 2026
-    if (selectedMonth === 6 && selectedYear === 2026) {
+    if (!loadedShifts && selectedMonth === 6 && selectedYear === 2026) {
       const oldSaved = localStorage.getItem("absen_staff_shifts");
       if (oldSaved) {
         try {
-          setStaffShifts(JSON.parse(oldSaved));
-          return;
+          loadedShifts = JSON.parse(oldSaved);
         } catch (e) {}
       }
     }
-    // Generate fresh seeded shifts for this month
-    setStaffShifts(getInitialStaffShifts());
+    
+    if (loadedShifts) {
+      setStaffShifts(loadedShifts);
+    } else {
+      // Generate fresh seeded shifts for this month
+      setStaffShifts(getInitialStaffShifts());
+    }
+
+    // Background sync from Google Sheets if configured
+    if (getGasUrl()) {
+      handlePullData(false);
+    }
   }, [selectedMonth, selectedYear]);
 
   // Sync shifts to local storage
@@ -144,6 +181,28 @@ export default function App() {
     localStorage.setItem("absen_staff_shifts", JSON.stringify(staffShifts));
   }, [staffShifts, selectedMonth, selectedYear]);
 
+  // Periodic silent background sync (every 10 seconds) to sync other clients
+  useEffect(() => {
+    const url = getGasUrl();
+    if (!url) return;
+
+    const interval = setInterval(() => {
+      fetchDataFromGoogleSheets(selectedMonth, selectedYear)
+        .then((result) => {
+          if (result.success && result.staffShifts && result.logs) {
+            setStaffShifts(result.staffShifts);
+            setLogs(result.logs);
+            setSyncStatus("synced");
+          }
+        })
+        .catch((err) => {
+          console.error("Silent sync failed", err);
+        });
+    }, 10000); // 10 seconds
+
+    return () => clearInterval(interval);
+  }, [selectedMonth, selectedYear]);
+
   // Sync logs to local storage
   useEffect(() => {
     localStorage.setItem("absen_logs", JSON.stringify(logs));
@@ -151,16 +210,23 @@ export default function App() {
 
   // Handlers
   const handleUpdateSchedule = (staffId: string, dayIndex: number, newValue: string) => {
-    setStaffShifts((prev) =>
-      prev.map((staff) => {
-        if (staff.id === staffId) {
-          const updatedSchedule = [...staff.schedule];
-          updatedSchedule[dayIndex] = newValue;
-          return { ...staff, schedule: updatedSchedule };
-        }
-        return staff;
-      })
-    );
+    const updated = staffShifts.map((staff) => {
+      if (staff.id === staffId) {
+        const updatedSchedule = [...staff.schedule];
+        updatedSchedule[dayIndex] = newValue;
+        return { ...staff, schedule: updatedSchedule };
+      }
+      return staff;
+    });
+    setStaffShifts(updated);
+
+    // Kirim otomatis ke Google Sheets
+    if (getGasUrl()) {
+      setSyncStatus("syncing");
+      syncAllToGoogleSheets(updated, logs, selectedMonth, selectedYear)
+        .then((res) => setSyncStatus(res.success ? "synced" : "error"))
+        .catch(() => setSyncStatus("error"));
+    }
   };
 
   const handleAddStaff = (name: string, category: "CS LINE" | "CS LC" | "KAPTEN KASIR" | "KASIR") => {
@@ -175,13 +241,31 @@ export default function App() {
       schedule: defaultSchedule,
     };
 
-    setStaffShifts((prev) => [...prev, newStaff]);
+    const updated = [...staffShifts, newStaff];
+    setStaffShifts(updated);
+
+    // Kirim otomatis ke Google Sheets
+    if (getGasUrl()) {
+      setSyncStatus("syncing");
+      syncAllToGoogleSheets(updated, logs, selectedMonth, selectedYear)
+        .then((res) => setSyncStatus(res.success ? "synced" : "error"))
+        .catch(() => setSyncStatus("error"));
+    }
   };
 
   const handleDeleteStaff = (staffId: string) => {
-    setStaffShifts((prev) => prev.filter((s) => s.id !== staffId));
-    // Also delete any logs associated with this staff member to keep data consistent
-    setLogs((prev) => prev.filter((l) => l.staffId !== staffId));
+    const updatedShifts = staffShifts.filter((s) => s.id !== staffId);
+    const updatedLogs = logs.filter((l) => l.staffId !== staffId);
+    setStaffShifts(updatedShifts);
+    setLogs(updatedLogs);
+
+    // Kirim otomatis ke Google Sheets
+    if (getGasUrl()) {
+      setSyncStatus("syncing");
+      syncAllToGoogleSheets(updatedShifts, updatedLogs, selectedMonth, selectedYear)
+        .then((res) => setSyncStatus(res.success ? "synced" : "error"))
+        .catch(() => setSyncStatus("error"));
+    }
   };
 
   const handleAddLog = (newLogData: Omit<ClockInLog, "id" | "timestamp">) => {
@@ -228,6 +312,14 @@ export default function App() {
 
   const handleClearAllLogs = () => {
     setLogs([]);
+
+    // Kirim otomatis ke Google Sheets
+    if (getGasUrl()) {
+      setSyncStatus("syncing");
+      syncAllToGoogleSheets(staffShifts, [], selectedMonth, selectedYear)
+        .then((res) => setSyncStatus(res.success ? "synced" : "error"))
+        .catch(() => setSyncStatus("error"));
+    }
   };
 
   const handleResetToDefault = () => {
@@ -243,35 +335,58 @@ export default function App() {
       year: selectedYear
     }));
     setLogs(seeded);
+
+    // Kirim otomatis ke Google Sheets
+    if (getGasUrl()) {
+      setSyncStatus("syncing");
+      syncAllToGoogleSheets(defaults, seeded, selectedMonth, selectedYear)
+        .then((res) => setSyncStatus(res.success ? "synced" : "error"))
+        .catch(() => setSyncStatus("error"));
+    }
   };
 
   const handleImportState = (newState: { staffShifts: StaffShift[]; logs: ClockInLog[] }) => {
     setStaffShifts(newState.staffShifts);
     setLogs(newState.logs);
+
+    // Kirim otomatis ke Google Sheets
+    if (getGasUrl()) {
+      setSyncStatus("syncing");
+      syncAllToGoogleSheets(newState.staffShifts, newState.logs, selectedMonth, selectedYear)
+        .then((res) => setSyncStatus(res.success ? "synced" : "error"))
+        .catch(() => setSyncStatus("error"));
+    }
   };
 
   const handleImportParsedShifts = (parsed: StaffShift[], mode: "merge" | "overwrite") => {
+    let updated: StaffShift[];
     if (mode === "overwrite") {
-      setStaffShifts(parsed);
+      updated = parsed;
     } else {
-      setStaffShifts((prev) => {
-        const updated = [...prev];
-        parsed.forEach((newStaff) => {
-          const existingIdx = updated.findIndex(
-            (s) => s.name.trim().toUpperCase() === newStaff.name.trim().toUpperCase()
-          );
-          if (existingIdx !== -1) {
-            updated[existingIdx] = {
-              ...updated[existingIdx],
-              category: newStaff.category,
-              schedule: newStaff.schedule,
-            };
-          } else {
-            updated.push(newStaff);
-          }
-        });
-        return updated;
+      updated = [...staffShifts];
+      parsed.forEach((newStaff) => {
+        const existingIdx = updated.findIndex(
+          (s) => s.name.trim().toUpperCase() === newStaff.name.trim().toUpperCase()
+        );
+        if (existingIdx !== -1) {
+          updated[existingIdx] = {
+            ...updated[existingIdx],
+            category: newStaff.category,
+            schedule: newStaff.schedule,
+          };
+        } else {
+          updated.push(newStaff);
+        }
       });
+    }
+    setStaffShifts(updated);
+
+    // Kirim otomatis ke Google Sheets
+    if (getGasUrl()) {
+      setSyncStatus("syncing");
+      syncAllToGoogleSheets(updated, logs, selectedMonth, selectedYear)
+        .then((res) => setSyncStatus(res.success ? "synced" : "error"))
+        .catch(() => setSyncStatus("error"));
     }
   };
 
@@ -325,6 +440,21 @@ export default function App() {
                   <CloudOff className="h-4 w-4 text-slate-600 shrink-0" />
                   <span>BELUM DISET</span>
                 </div>
+              )}
+
+              {/* Refresh / Pull Button */}
+              {getGasUrl() && (
+                <button
+                  id="sync-pull-btn"
+                  onClick={() => handlePullData(true)}
+                  disabled={isPulling}
+                  className={`flex items-center justify-center p-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-teal-400 cursor-pointer transition-all shadow-md active:scale-95 ${
+                    isPulling ? "opacity-60" : ""
+                  }`}
+                  title="Tarik Data Terbaru dari Google Sheets"
+                >
+                  <RefreshCw className={`h-4 w-4 ${isPulling ? "animate-spin" : ""}`} />
+                </button>
               )}
 
               {/* Current Active Period Info (Using Custom DatePicker) */}

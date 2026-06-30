@@ -62,6 +62,11 @@ function doPost(e) {
       );
       message = success ? "SINKRONISASI JADWAL DAN ABSENSI PENUH BERHASIL!" : "GAGAL MENSINKRONKAN DATA PENUH.";
     } 
+    else if (action === "read_data") {
+      var readResult = handleReadData(requestData.selectedMonth, requestData.selectedYear);
+      return ContentService.createTextOutput(JSON.stringify(readResult))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
     else {
       message = "AKSI TIDAK DIKENAL: " + action;
     }
@@ -134,20 +139,21 @@ function handleUpsertLog(log, selectedMonth, selectedYear) {
     }
   }
   
+  var formattedDate = selectedYear + "-" + String(selectedMonth + 1).padStart(2, '0') + "-" + String(log.day).padStart(2, '0');
   var rowValues = [
     log.id,
     log.staffId,
     log.staffName,
     log.category,
-    log.dateStr,
-    log.dayIndex + 1,
+    formattedDate,
+    log.day,
     log.clockInTime || "",
-    log.clockInPhoto || "",
-    log.clockInLocation || "",
-    log.isLate ? "TERLAMBAT" : "TEPAT WAKTU",
-    log.clockOutTime || "",
-    log.clockOutPhoto || "",
-    log.clockOutLocation || "",
+    "", // FOTO_MASUK
+    "", // LOKASI_MASUK
+    log.status === "TERLAMBAT" ? "TERLAMBAT" : "TEPAT WAKTU",
+    "", // JAM_PULANG
+    "", // FOTO_PULANG
+    "", // LOKASI_PULANG
     new Date().toISOString()
   ];
   
@@ -242,20 +248,23 @@ function handleSyncAll(staffShifts, logs, selectedMonth, selectedYear) {
   var logRows = [];
   if (logs && logs.length > 0) {
     logs.forEach(function(log) {
+      var logMonth = log.month !== undefined ? log.month : selectedMonth;
+      var logYear = log.year !== undefined ? log.year : selectedYear;
+      var formattedDate = logYear + "-" + String(logMonth + 1).padStart(2, '0') + "-" + String(log.day).padStart(2, '0');
       logRows.push([
         log.id,
         log.staffId,
         log.staffName,
         log.category,
-        log.dateStr,
-        log.dayIndex + 1,
+        formattedDate,
+        log.day,
         log.clockInTime || "",
-        log.clockInPhoto || "",
-        log.clockInLocation || "",
-        log.isLate ? "TERLAMBAT" : "TEPAT WAKTU",
-        log.clockOutTime || "",
-        log.clockOutPhoto || "",
-        log.clockOutLocation || "",
+        "", // FOTO_MASUK
+        "", // LOKASI_MASUK
+        log.status === "TERLAMBAT" ? "TERLAMBAT" : "TEPAT WAKTU",
+        "", // JAM_PULANG
+        "", // FOTO_PULANG
+        "", // LOKASI_PULANG
         new Date().toISOString()
       ]);
     });
@@ -269,4 +278,87 @@ function handleSyncAll(staffShifts, logs, selectedMonth, selectedYear) {
   sheetLogs.autoResizeColumns(1, 6);
   
   return true;
+}
+
+/**
+ * 5. HANDLE READ ALL DATA (STAFF SHIFTS & LOGS)
+ */
+function handleReadData(selectedMonth, selectedYear) {
+  var monthName = MONTH_NAMES[selectedMonth] || "BULAN_DI_LUAR_JANGKAUAN";
+  var sheetJadwalName = SHEET_STAFF_PREFIX + monthName + "_" + selectedYear;
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  
+  // 1. Baca Jadwal Staf
+  var staffShifts = [];
+  var sheetJadwal = ss.getSheetByName(sheetJadwalName);
+  if (sheetJadwal && sheetJadwal.getLastRow() > 1) {
+    var data = sheetJadwal.getDataRange().getValues();
+    // Headers: STAFF_ID, NAMA_STAFF, DIVISI, TGL_1 ... TGL_31
+    for (var i = 1; i < data.length; i++) {
+      var row = data[i];
+      if (row[0]) {
+        var schedule = [];
+        for (var d = 3; d < 34; d++) {
+          schedule.push(row[d] !== undefined ? String(row[d]) : "1");
+        }
+        staffShifts.push({
+          id: row[0],
+          name: row[1],
+          category: row[2],
+          schedule: schedule
+        });
+      }
+    }
+  }
+  
+  // 2. Baca Log Kehadiran
+  var logs = [];
+  var sheetLogs = ss.getSheetByName(SHEET_LOGS_NAME);
+  if (sheetLogs && sheetLogs.getLastRow() > 1) {
+    var data = sheetLogs.getDataRange().getValues();
+    // Headers: LOG_ID, STAFF_ID, NAMA_STAFF, KATEGORI, TANGGAL, HARI_KE, JAM_MASUK, FOTO_MASUK, LOKASI_MASUK, STATUS_TERLAMBAT, JAM_PULANG ...
+    for (var i = 1; i < data.length; i++) {
+      var row = data[i];
+      if (row[0]) {
+        var dateVal = row[4];
+        var logMonth = selectedMonth;
+        var logYear = selectedYear;
+        if (dateVal) {
+          var dObj = new Date(dateVal);
+          if (!isNaN(dObj.getTime())) {
+            logMonth = dObj.getMonth();
+            logYear = dObj.getFullYear();
+          }
+        }
+        
+        if (logMonth === selectedMonth && logYear === selectedYear) {
+          var clockInTime = row[6] || "";
+          var shift = "1";
+          if (clockInTime && clockInTime.indexOf("19:") !== -1) {
+            shift = "2";
+          }
+          var statusVal = row[9] === "TERLAMBAT" ? "TERLAMBAT" : "ON TIME";
+          logs.push({
+            id: row[0],
+            staffId: row[1],
+            staffName: row[2],
+            category: row[3],
+            day: Number(row[5]) || 1,
+            shift: shift,
+            clockInTime: clockInTime,
+            status: statusVal,
+            timestamp: row[13] || new Date().toISOString(),
+            month: logMonth,
+            year: logYear
+          });
+        }
+      }
+    }
+  }
+  
+  return {
+    success: true,
+    staffShifts: staffShifts,
+    logs: logs
+  };
 }

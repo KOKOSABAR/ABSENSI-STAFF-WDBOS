@@ -150,3 +150,52 @@ export async function syncAllToGoogleSheets(
     return { success: false, message: `SINKRONISASI GAGAL: ${error.message || error}` };
   }
 }
+
+/**
+ * Mengambil (pull) data terbaru dari Google Sheets.
+ */
+export async function fetchDataFromGoogleSheets(
+  selectedMonth: number,
+  selectedYear: number
+): Promise<{ success: boolean; staffShifts?: StaffShift[]; logs?: ClockInLog[]; message: string }> {
+  const url = getGasUrl();
+  if (!url) {
+    return { success: false, message: "URL GOOGLE APPS SCRIPT BELUM DIKONFIGURASI" };
+  }
+
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      // Jangan pakai headers Content-Type: application/json agar tidak memicu OPTIONS preflight CORS request
+      body: JSON.stringify({
+        action: "read_data",
+        selectedMonth,
+        selectedYear,
+      }),
+    });
+
+    const text = await response.text();
+    const data = JSON.parse(text);
+
+    if (data && data.success) {
+      return {
+        success: true,
+        staffShifts: data.staffShifts,
+        logs: data.logs,
+        message: "BERHASIL MEMUAT DATA DARI GOOGLE SPREADSHEET."
+      };
+    } else {
+      return { 
+        success: false, 
+        message: data?.message || "GAGAL MEMUAT DATA DARI SERVER." 
+      };
+    }
+  } catch (error: any) {
+    console.error("Fetch data failed", error);
+    return { 
+      success: false, 
+      message: `GAGAL MENGHUBUNGI GOOGLE SHEETS: ${error.message || error}` 
+    };
+  }
+}
+
