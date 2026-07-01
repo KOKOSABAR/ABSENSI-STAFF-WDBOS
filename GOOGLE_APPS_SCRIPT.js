@@ -336,7 +336,9 @@ function handleReadData(selectedMonth, selectedYear) {
           if (row[6] instanceof Date) {
             clockInTime = Utilities.formatDate(row[6], Session.getScriptTimeZone(), "HH:mm:ss");
           } else {
-            clockInTime = row[6] !== undefined && row[6] !== null ? String(row[6]) : "";
+            var rawStr = row[6] !== undefined && row[6] !== null ? String(row[6]) : "";
+            var timeMatch = rawStr.match(/\b\d{2}:\d{2}:\d{2}\b/);
+            clockInTime = timeMatch ? timeMatch[0] : rawStr;
           }
           var shift = "1";
           if (clockInTime && clockInTime.indexOf("19:") !== -1) {

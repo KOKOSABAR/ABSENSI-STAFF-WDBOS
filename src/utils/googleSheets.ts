@@ -24,6 +24,24 @@ export function saveGasUrl(url: string): void {
 }
 
 /**
+ * Membersihkan format waktu kotor (misal: "Sat Dec 30 1899 11:00:53 GMT...") menjadi "HH:mm:ss".
+ */
+export function cleanTimeStr(timeStr: string): string {
+  if (!timeStr) return "";
+  const match = timeStr.match(/\b\d{2}:\d{2}:\d{2}\b/);
+  if (match) {
+    return match[0];
+  }
+  if (timeStr.includes("T")) {
+    const parts = timeStr.split("T");
+    if (parts[1]) {
+      return parts[1].split(".")[0];
+    }
+  }
+  return timeStr;
+}
+
+/**
  * Test koneksi ke Google Apps Script Web App.
  */
 export async function testGasConnection(url: string): Promise<{ success: boolean; message: string }> {
@@ -177,10 +195,14 @@ export async function fetchDataFromGoogleSheets(
     const data = JSON.parse(text);
 
     if (data && data.success) {
+      const cleanedLogs = (data.logs || []).map((l: any) => ({
+        ...l,
+        clockInTime: cleanTimeStr(l.clockInTime || "")
+      }));
       return {
         success: true,
         staffShifts: data.staffShifts,
-        logs: data.logs,
+        logs: cleanedLogs,
         message: "BERHASIL MEMUAT DATA DARI GOOGLE SPREADSHEET."
       };
     } else {

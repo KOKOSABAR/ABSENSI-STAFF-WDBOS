@@ -13,7 +13,7 @@ import ClockInLogs from "./components/ClockInLogs";
 import DashboardStats from "./components/DashboardStats";
 import ImportExport from "./components/ImportExport";
 import { Grid, Clock, ListTodo, BarChart2, Save, Calendar, RefreshCw, LayoutDashboard, Cloud, CloudOff, CloudLightning, Sun, Moon } from "lucide-react";
-import { getGasUrl, syncUpsertLog, syncDeleteLog, fetchDataFromGoogleSheets, syncAllToGoogleSheets } from "./utils/googleSheets";
+import { getGasUrl, syncUpsertLog, syncDeleteLog, fetchDataFromGoogleSheets, syncAllToGoogleSheets, cleanTimeStr } from "./utils/googleSheets";
 import DatePicker from "./components/DatePicker";
 
 export default function App() {
@@ -119,8 +119,10 @@ export default function App() {
     if (saved) {
       try {
         const parsed = JSON.parse(saved) as ClockInLog[];
-        // Filter out any legacy sample seed logs
-        return parsed.filter((l) => !l.id.startsWith("seed-log-"));
+        // Filter out any legacy sample seed logs and clean up messy time format
+        return parsed
+          .filter((l) => !l.id.startsWith("seed-log-"))
+          .map((l) => ({ ...l, clockInTime: cleanTimeStr(l.clockInTime || "") }));
       } catch (e) {
         console.error("Failed to parse saved attendance logs", e);
       }
