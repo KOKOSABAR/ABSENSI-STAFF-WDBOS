@@ -61,18 +61,15 @@ export default function App() {
   };
 
   const [selectedMonth, setSelectedMonth] = useState<number>(() => {
-    const saved = localStorage.getItem("absen_selected_month");
-    return saved ? parseInt(saved) : 5; // default June (matching screenshot 2026-6-30)
+    return new Date().getMonth();
   });
   
   const [selectedYear, setSelectedYear] = useState<number>(() => {
-    const saved = localStorage.getItem("absen_selected_year");
-    return saved ? parseInt(saved) : 2026; // default 2026
+    return new Date().getFullYear();
   });
 
   const [selectedDay, setSelectedDay] = useState<number>(() => {
-    const saved = localStorage.getItem("absen_selected_day");
-    return saved ? parseInt(saved) : 30; // default 30 (matching screenshot 2026-6-30)
+    return new Date().getDate();
   });
 
   useEffect(() => {
@@ -89,10 +86,9 @@ export default function App() {
 
   // Initial states with lazy initialization from LocalStorage
   const [staffShifts, setStaffShifts] = useState<StaffShift[]>(() => {
-    const initialMonth = localStorage.getItem("absen_selected_month");
-    const initialYear = localStorage.getItem("absen_selected_year");
-    const m = initialMonth ? parseInt(initialMonth) : 6;
-    const y = initialYear ? parseInt(initialYear) : 2026;
+    const now = new Date();
+    const m = now.getMonth();
+    const y = now.getFullYear();
     const key = `absen_staff_shifts_${y}_${m}`;
     const saved = localStorage.getItem(key);
     if (saved) {
@@ -100,15 +96,6 @@ export default function App() {
         return JSON.parse(saved);
       } catch (e) {
         console.error("Failed to parse saved staff shifts", e);
-      }
-    }
-    // Fallback migration check for old July key
-    if (m === 6 && y === 2026) {
-      const oldSaved = localStorage.getItem("absen_staff_shifts");
-      if (oldSaved) {
-        try {
-          return JSON.parse(oldSaved);
-        } catch (e) {}
       }
     }
     return getInitialStaffShifts();
