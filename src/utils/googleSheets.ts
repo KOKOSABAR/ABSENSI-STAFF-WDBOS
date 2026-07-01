@@ -6,7 +6,7 @@
 import { ClockInLog, StaffShift } from "../types";
 
 // Ambil URL default dari environment variables atau fallback ke URL yang diberikan user
-const DEFAULT_GAS_URL = (import.meta as any).env?.VITE_GAS_URL || "https://script.google.com/macros/s/AKfycbz5E660YNYF7EnMQUek84IiFhEU6inNcF-eRbEl6ovczHCMPyGsor0xosGJyyrFTUhj0g/exec";
+const DEFAULT_GAS_URL = import.meta.env.VITE_GAS_URL || "https://script.google.com/macros/s/AKfycbz5E660YNYF7EnMQUek84IiFhEU6inNcF-eRbEl6ovczHCMPyGsor0xosGJyyrFTUhj0g/exec";
 
 /**
  * Mendapatkan URL Google Apps Script yang tersimpan.
