@@ -332,7 +332,12 @@ function handleReadData(selectedMonth, selectedYear) {
         }
         
         if (logMonth === selectedMonth && logYear === selectedYear) {
-          var clockInTime = row[6] || "";
+          var clockInTime = "";
+          if (row[6] instanceof Date) {
+            clockInTime = Utilities.formatDate(row[6], Session.getScriptTimeZone(), "HH:mm:ss");
+          } else {
+            clockInTime = row[6] !== undefined && row[6] !== null ? String(row[6]) : "";
+          }
           var shift = "1";
           if (clockInTime && clockInTime.indexOf("19:") !== -1) {
             shift = "2";
