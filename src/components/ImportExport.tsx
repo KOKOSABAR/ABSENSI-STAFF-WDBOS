@@ -521,23 +521,24 @@ function handleReadData(selectedMonth, selectedYear) {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-end">
               <div className="lg:col-span-8 space-y-1.5">
                 <label className="text-[10px] font-black text-teal-400 font-mono tracking-wider flex items-center gap-1.5">
-                  <Link className="h-3.5 w-3.5" /> URL GOOGLE APPS SCRIPT WEB APP
+                  <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" /> URL GOOGLE APPS SCRIPT WEB APP (PERMANEN / TERKUNCI)
                 </label>
                 <input
                   type="text"
+                  readOnly
                   placeholder="https://script.google.com/macros/s/.../exec"
                   value={gasUrl}
-                  onChange={(e) => setGasUrlInput(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 text-slate-200 placeholder-slate-600 rounded-xl px-3 py-2.5 text-xs font-mono focus:outline-none focus:border-teal-500 transition-colors"
+                  className="w-full bg-slate-950/80 border border-slate-900 text-slate-400 rounded-xl px-3 py-2.5 text-xs font-mono cursor-not-allowed focus:outline-none"
+                  title="URL ini telah dikunci secara permanen di dalam sistem agar data selalu sinkron."
                 />
               </div>
 
               <div className="lg:col-span-4 flex gap-2">
                 <button
-                  onClick={handleSaveGasUrl}
-                  className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] font-black uppercase tracking-wider py-2.5 rounded-xl cursor-pointer border border-slate-700 font-mono transition-colors"
+                  disabled
+                  className="flex-1 bg-emerald-950/40 border border-emerald-500/20 text-emerald-400/60 text-[10px] font-black uppercase tracking-wider py-2.5 rounded-xl font-mono flex items-center justify-center gap-1 cursor-not-allowed"
                 >
-                  SIMPAN URL
+                  <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" /> PERMANEN
                 </button>
                 <button
                   onClick={handleTestConnection}

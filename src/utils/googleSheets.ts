@@ -13,8 +13,7 @@ const DEFAULT_GAS_URL = import.meta.env.VITE_GAS_URL || "https://script.google.c
  * Memprioritaskan local storage (jika disetel oleh user di UI) lalu environment variable.
  */
 export function getGasUrl(): string {
-  const saved = localStorage.getItem("absen_gas_url");
-  return saved || DEFAULT_GAS_URL;
+  return DEFAULT_GAS_URL;
 }
 
 /**
