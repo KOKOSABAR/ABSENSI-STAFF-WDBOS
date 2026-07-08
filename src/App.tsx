@@ -580,196 +580,199 @@ export default function App() {
       <div className="absolute top-0 left-1/4 w-96 h-96 bg-teal-500/10 rounded-full blur-3xl pointer-events-none"></div>
       <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none"></div>
 
-      {/* Top Banner / System Title */}
-      <header className="bg-slate-950/80 border-b border-slate-900 sticky top-0 z-40 backdrop-blur-md">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-20">
-            <div className="flex items-center gap-3.5">
-              <div className="h-11 w-11 bg-gradient-to-br from-teal-500 to-emerald-500 rounded-2xl flex items-center justify-center text-slate-950 font-black text-lg shadow-lg shadow-teal-500/20 transform hover:scale-105 transition-transform">
-                W
-              </div>
-              <div>
-                <h1 className="text-sm sm:text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-slate-100 via-slate-200 to-teal-400 tracking-wider font-mono">
-                  DASHBOARD ABSENSI STAFF
-                </h1>
-                <p className="text-[9px] sm:text-[10px] font-black text-teal-400/80 tracking-widest uppercase font-mono">
-                  SISTEM INFORMASI & MANAJEMEN SHIFT KERJA (REAL-TIME)
-                </p>
-              </div>
-            </div>
-
-            {/* Google Sheets Sync Status Indicator */}
-            <div className="flex items-center gap-2.5">
-              {syncStatus === "synced" && (
-                <div className="flex items-center gap-2 bg-emerald-950/50 border border-emerald-500/40 text-emerald-400 text-[10px] font-black uppercase tracking-wider px-3 py-1.5 rounded-xl shadow-lg shadow-emerald-950/30">
-                  <Cloud className="h-4 w-4 text-emerald-400 animate-pulse shrink-0" />
-                  <span className="hidden md:inline">SINKRON: SHEET AKTIF</span>
-                  <span className="md:hidden">SINKRON</span>
+      {/* Sticky Header & Navigation Panel */}
+      <div className="sticky top-0 z-40 bg-[#070b13]/90 backdrop-blur-md border-b border-slate-900/60 shadow-2xl">
+        {/* Top Banner / System Title */}
+        <header className="bg-slate-950/40 border-b border-slate-900/40">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-center h-20">
+              <div className="flex items-center gap-3.5">
+                <div className="h-11 w-11 bg-gradient-to-br from-teal-500 to-emerald-500 rounded-2xl flex items-center justify-center text-slate-950 font-black text-lg shadow-lg shadow-teal-500/20 transform hover:scale-105 transition-transform">
+                  W
                 </div>
-              )}
-              {syncStatus === "syncing" && (
-                <div className="flex items-center gap-2 bg-amber-950/50 border border-amber-500/40 text-amber-400 text-[10px] font-black uppercase tracking-wider px-3 py-1.5 rounded-xl shadow-lg shadow-amber-950/30">
-                  <CloudLightning className="h-4 w-4 text-amber-400 animate-spin shrink-0" />
-                  <span>SINKRONISASI...</span>
+                <div>
+                  <h1 className="text-sm sm:text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-slate-100 via-slate-200 to-teal-400 tracking-wider font-mono">
+                    DASHBOARD ABSENSI STAFF
+                  </h1>
+                  <p className="text-[9px] sm:text-[10px] font-black text-teal-400/80 tracking-widest uppercase font-mono">
+                    SISTEM INFORMASI & MANAJEMEN SHIFT KERJA (REAL-TIME)
+                  </p>
                 </div>
-              )}
-              {syncStatus === "error" && (
-                <div className="flex items-center gap-2 bg-rose-950/50 border border-rose-500/40 text-rose-400 text-[10px] font-black uppercase tracking-wider px-3 py-1.5 rounded-xl shadow-lg shadow-rose-950/30">
-                  <CloudOff className="h-4 w-4 text-rose-400 shrink-0" />
-                  <span>SINKRON GAGAL</span>
-                </div>
-              )}
-              {syncStatus === "unconfigured" && (
-                <div className="flex items-center gap-2 bg-slate-900/80 border border-slate-850 text-slate-500 text-[10px] font-black uppercase tracking-wider px-3 py-1.5 rounded-xl">
-                  <CloudOff className="h-4 w-4 text-slate-600 shrink-0" />
-                  <span>BELUM DISET</span>
-                </div>
-              )}
-
-              {/* Refresh / Pull Button */}
-              {getGasUrl() && (
-                <button
-                  id="sync-pull-btn"
-                  onClick={() => handlePullData(true)}
-                  disabled={isPulling}
-                  className={`flex items-center justify-center p-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-teal-400 cursor-pointer transition-all shadow-md active:scale-95 ${
-                    isPulling ? "opacity-60" : ""
-                  }`}
-                  title="Tarik Data Terbaru dari Google Sheets"
-                >
-                  <RefreshCw className={`h-4 w-4 ${isPulling ? "animate-spin" : ""}`} />
-                </button>
-              )}
-
-              {/* Current Active Period Info (Using Custom DatePicker) */}
-              <div className="flex items-center gap-2" id="header-custom-datepicker-wrapper">
-                <DatePicker
-                  selectedDay={selectedDay}
-                  selectedMonth={selectedMonth}
-                  selectedYear={selectedYear}
-                  onChange={(d, m, y) => {
-                    setSelectedDay(d);
-                    setSelectedMonth(m);
-                    setSelectedYear(y);
-                  }}
-                  theme={theme}
-                />
               </div>
 
+              {/* Google Sheets Sync Status Indicator */}
+              <div className="flex items-center gap-2.5">
+                {syncStatus === "synced" && (
+                  <div className="flex items-center gap-2 bg-emerald-950/50 border border-emerald-500/40 text-emerald-400 text-[10px] font-black uppercase tracking-wider px-3 py-1.5 rounded-xl shadow-lg shadow-emerald-950/30">
+                    <Cloud className="h-4 w-4 text-emerald-400 animate-pulse shrink-0" />
+                    <span className="hidden md:inline">SINKRON: SHEET AKTIF</span>
+                    <span className="md:hidden">SINKRON</span>
+                  </div>
+                )}
+                {syncStatus === "syncing" && (
+                  <div className="flex items-center gap-2 bg-amber-950/50 border border-amber-500/40 text-amber-400 text-[10px] font-black uppercase tracking-wider px-3 py-1.5 rounded-xl shadow-lg shadow-amber-950/30">
+                    <CloudLightning className="h-4 w-4 text-amber-400 animate-spin shrink-0" />
+                    <span>SINKRONISASI...</span>
+                  </div>
+                )}
+                {syncStatus === "error" && (
+                  <div className="flex items-center gap-2 bg-rose-950/50 border border-rose-500/40 text-rose-400 text-[10px] font-black uppercase tracking-wider px-3 py-1.5 rounded-xl shadow-lg shadow-rose-950/30">
+                    <CloudOff className="h-4 w-4 text-rose-400 shrink-0" />
+                    <span>SINKRON GAGAL</span>
+                  </div>
+                )}
+                {syncStatus === "unconfigured" && (
+                  <div className="flex items-center gap-2 bg-slate-900/80 border border-slate-850 text-slate-500 text-[10px] font-black uppercase tracking-wider px-3 py-1.5 rounded-xl">
+                    <CloudOff className="h-4 w-4 text-slate-600 shrink-0" />
+                    <span>BELUM DISET</span>
+                  </div>
+                )}
 
+                {/* Refresh / Pull Button */}
+                {getGasUrl() && (
+                  <button
+                    id="sync-pull-btn"
+                    onClick={() => handlePullData(true)}
+                    disabled={isPulling}
+                    className={`flex items-center justify-center p-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-teal-400 cursor-pointer transition-all shadow-md active:scale-95 ${
+                      isPulling ? "opacity-60" : ""
+                    }`}
+                    title="Tarik Data Terbaru dari Google Sheets"
+                  >
+                    <RefreshCw className={`h-4 w-4 ${isPulling ? "animate-spin" : ""}`} />
+                  </button>
+                )}
+
+                {/* Current Active Period Info (Using Custom DatePicker) */}
+                <div className="flex items-center gap-2" id="header-custom-datepicker-wrapper">
+                  <DatePicker
+                    selectedDay={selectedDay}
+                    selectedMonth={selectedMonth}
+                    selectedYear={selectedYear}
+                    onChange={(d, m, y) => {
+                      setSelectedDay(d);
+                      setSelectedMonth(m);
+                      setSelectedYear(y);
+                    }}
+                    theme={theme}
+                  />
+                </div>
+
+              </div>
             </div>
           </div>
-        </div>
-      </header>
+        </header>
 
-      {/* Main Tab Navigation */}
-      <div className="bg-slate-950/40 border-b border-slate-900/60 shadow-2xl sticky top-20 z-30 backdrop-blur-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex overflow-x-auto gap-1.5 py-3.5 scrollbar-none">
-            <button
-              id="tab-daily-btn"
-              onClick={() => setActiveTab("daily")}
-              className={`flex items-center gap-2 px-5 py-3 rounded-xl text-xs font-black tracking-wider uppercase transition-all whitespace-nowrap cursor-pointer border ${
-                activeTab === "daily"
-                  ? "bg-teal-550/15 text-teal-300 border-teal-500/30 shadow-md shadow-teal-500/5"
-                  : "text-slate-400 hover:text-teal-200 hover:bg-teal-500/5 hover:border-teal-500/20 border-transparent"
-              }`}
-            >
-              <LayoutDashboard className={`h-4 w-4 shrink-0 transition-colors ${activeTab === "daily" ? "text-teal-400" : "text-teal-650"}`} />
-              DASHBOARD ABSENSI HARIAN (WDBOS)
-            </button>
+        {/* Main Tab Navigation */}
+        <div className="bg-slate-950/20">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex overflow-x-auto gap-1.5 py-3.5 scrollbar-none">
+              <button
+                id="tab-daily-btn"
+                onClick={() => setActiveTab("daily")}
+                className={`flex items-center gap-2 px-5 py-3 rounded-xl text-xs font-black tracking-wider uppercase transition-all whitespace-nowrap cursor-pointer border ${
+                  activeTab === "daily"
+                    ? "bg-teal-550/15 text-teal-300 border-teal-500/30 shadow-md shadow-teal-500/5"
+                    : "text-slate-400 hover:text-teal-200 hover:bg-teal-500/5 hover:border-teal-500/20 border-transparent"
+                }`}
+              >
+                <LayoutDashboard className={`h-4 w-4 shrink-0 transition-colors ${activeTab === "daily" ? "text-teal-400" : "text-teal-650"}`} />
+                DASHBOARD ABSENSI HARIAN (WDBOS)
+              </button>
 
-            <button
-              id="tab-passport-btn"
-               onClick={() => {
-                 if (activeTab !== "passport") {
-                   if (passportUnlocked) {
-                     setActiveTab("passport");
-                   } else {
-                     requestPassword("AKSES HALAMAN SERAH TERIMA PASPOR", () => {
-                       sessionStorage.setItem("absen_passport_unlocked", "true");
-                       setActiveTab("passport");
-                     });
-                   }
-                 }
-               }}
-              className={`flex items-center gap-2 px-5 py-3 rounded-xl text-xs font-black tracking-wider uppercase transition-all whitespace-nowrap cursor-pointer border ${
-                activeTab === "passport"
-                  ? "bg-rose-550/15 text-rose-300 border-rose-500/30 shadow-md shadow-rose-500/5"
-                  : "text-slate-400 hover:text-rose-200 hover:bg-rose-500/5 hover:border-rose-500/20 border-transparent"
-              }`}
-            >
-              <Fingerprint className={`h-4 w-4 shrink-0 transition-colors ${activeTab === "passport" ? "text-rose-400" : "text-rose-650"}`} />
-              SERAH TERIMA PASPOR
-            </button>
+              <button
+                id="tab-passport-btn"
+                onClick={() => {
+                  if (activeTab !== "passport") {
+                    if (passportUnlocked) {
+                      setActiveTab("passport");
+                    } else {
+                      requestPassword("AKSES HALAMAN SERAH TERIMA PASPOR", () => {
+                        sessionStorage.setItem("absen_passport_unlocked", "true");
+                        setActiveTab("passport");
+                      });
+                    }
+                  }
+                }}
+                className={`flex items-center gap-2 px-5 py-3 rounded-xl text-xs font-black tracking-wider uppercase transition-all whitespace-nowrap cursor-pointer border ${
+                  activeTab === "passport"
+                    ? "bg-rose-550/15 text-rose-300 border-rose-500/30 shadow-md shadow-rose-500/5"
+                    : "text-slate-400 hover:text-rose-200 hover:bg-rose-500/5 hover:border-rose-500/20 border-transparent"
+                }`}
+              >
+                <Fingerprint className={`h-4 w-4 shrink-0 transition-colors ${activeTab === "passport" ? "text-rose-400" : "text-rose-650"}`} />
+                SERAH TERIMA PASPOR
+              </button>
 
-            <button
-              id="tab-spreadsheet-btn"
-              onClick={() => setActiveTab("spreadsheet")}
-              className={`flex items-center gap-2 px-5 py-3 rounded-xl text-xs font-black tracking-wider uppercase transition-all whitespace-nowrap cursor-pointer border ${
-                activeTab === "spreadsheet"
-                  ? "bg-indigo-550/15 text-indigo-300 border-indigo-500/30 shadow-md shadow-indigo-500/5"
-                  : "text-slate-400 hover:text-indigo-200 hover:bg-indigo-500/5 hover:border-indigo-500/20 border-transparent"
-              }`}
-            >
-              <Grid className={`h-4 w-4 shrink-0 transition-colors ${activeTab === "spreadsheet" ? "text-indigo-400" : "text-indigo-650"}`} />
-              TABEL SHIFT (SPREADSHEET)
-            </button>
+              <button
+                id="tab-spreadsheet-btn"
+                onClick={() => setActiveTab("spreadsheet")}
+                className={`flex items-center gap-2 px-5 py-3 rounded-xl text-xs font-black tracking-wider uppercase transition-all whitespace-nowrap cursor-pointer border ${
+                  activeTab === "spreadsheet"
+                    ? "bg-indigo-550/15 text-indigo-300 border-indigo-500/30 shadow-md shadow-indigo-500/5"
+                    : "text-slate-400 hover:text-indigo-200 hover:bg-indigo-500/5 hover:border-indigo-500/20 border-transparent"
+                }`}
+              >
+                <Grid className={`h-4 w-4 shrink-0 transition-colors ${activeTab === "spreadsheet" ? "text-indigo-400" : "text-indigo-650"}`} />
+                TABEL SHIFT (SPREADSHEET)
+              </button>
 
-            <button
-              id="tab-clockin-btn"
-              onClick={() => setActiveTab("clockin")}
-              className={`flex items-center gap-2 px-5 py-3 rounded-xl text-xs font-black tracking-wider uppercase transition-all whitespace-nowrap cursor-pointer border ${
-                activeTab === "clockin"
-                  ? "bg-amber-550/15 text-amber-300 border-amber-500/30 shadow-md shadow-amber-500/5"
-                  : "text-slate-400 hover:text-amber-200 hover:bg-amber-500/5 hover:border-amber-500/20 border-transparent"
-              }`}
-            >
-              <Clock className={`h-4 w-4 shrink-0 transition-colors ${activeTab === "clockin" ? "text-amber-400" : "text-amber-655"}`} />
-              CLOCK-IN MANDIRI (SIMULASI)
-            </button>
+              <button
+                id="tab-clockin-btn"
+                onClick={() => setActiveTab("clockin")}
+                className={`flex items-center gap-2 px-5 py-3 rounded-xl text-xs font-black tracking-wider uppercase transition-all whitespace-nowrap cursor-pointer border ${
+                  activeTab === "clockin"
+                    ? "bg-amber-550/15 text-amber-300 border-amber-500/30 shadow-md shadow-amber-500/5"
+                    : "text-slate-400 hover:text-amber-200 hover:bg-amber-500/5 hover:border-amber-500/20 border-transparent"
+                }`}
+              >
+                <Clock className={`h-4 w-4 shrink-0 transition-colors ${activeTab === "clockin" ? "text-amber-400" : "text-amber-655"}`} />
+                CLOCK-IN MANDIRI (SIMULASI)
+              </button>
 
-            <button
-              id="tab-logs-btn"
-              onClick={() => setActiveTab("logs")}
-              className={`flex items-center gap-2 px-5 py-3 rounded-xl text-xs font-black tracking-wider uppercase transition-all whitespace-nowrap cursor-pointer border ${
-                activeTab === "logs"
-                  ? "bg-cyan-550/15 text-cyan-300 border-cyan-500/30 shadow-md shadow-cyan-500/5"
-                  : "text-slate-400 hover:text-cyan-200 hover:bg-cyan-500/5 hover:border-cyan-500/20 border-transparent"
-              }`}
-            >
-              <ListTodo className={`h-4 w-4 shrink-0 transition-colors ${activeTab === "logs" ? "text-cyan-400" : "text-cyan-650"}`} />
-              LOG KEHADIRAN ({logs.filter(l => (l.month !== undefined ? l.month : 6) === selectedMonth && (l.year !== undefined ? l.year : 2026) === selectedYear).length})
-            </button>
+              <button
+                id="tab-logs-btn"
+                onClick={() => setActiveTab("logs")}
+                className={`flex items-center gap-2 px-5 py-3 rounded-xl text-xs font-black tracking-wider uppercase transition-all whitespace-nowrap cursor-pointer border ${
+                  activeTab === "logs"
+                    ? "bg-cyan-550/15 text-cyan-300 border-cyan-500/30 shadow-md shadow-cyan-500/5"
+                    : "text-slate-400 hover:text-cyan-200 hover:bg-cyan-500/5 hover:border-cyan-500/20 border-transparent"
+                }`}
+              >
+                <ListTodo className={`h-4 w-4 shrink-0 transition-colors ${activeTab === "logs" ? "text-cyan-400" : "text-cyan-650"}`} />
+                LOG KEHADIRAN ({logs.filter(l => (l.month !== undefined ? l.month : 6) === selectedMonth && (l.year !== undefined ? l.year : 2026) === selectedYear).length})
+              </button>
 
-            <button
-              id="tab-stats-btn"
-              onClick={() => setActiveTab("stats")}
-              className={`flex items-center gap-2 px-5 py-3 rounded-xl text-xs font-black tracking-wider uppercase transition-all whitespace-nowrap cursor-pointer border ${
-                activeTab === "stats"
-                  ? "bg-fuchsia-550/15 text-fuchsia-300 border-fuchsia-500/30 shadow-md shadow-fuchsia-500/5"
-                  : "text-slate-400 hover:text-fuchsia-200 hover:bg-fuchsia-500/5 hover:border-fuchsia-500/20 border-transparent"
-              }`}
-            >
-              <BarChart2 className={`h-4 w-4 shrink-0 transition-colors ${activeTab === "stats" ? "text-fuchsia-400" : "text-fuchsia-650"}`} />
-              ANALISIS & STATISTIK
-            </button>
+              <button
+                id="tab-stats-btn"
+                onClick={() => setActiveTab("stats")}
+                className={`flex items-center gap-2 px-5 py-3 rounded-xl text-xs font-black tracking-wider uppercase transition-all whitespace-nowrap cursor-pointer border ${
+                  activeTab === "stats"
+                    ? "bg-fuchsia-550/15 text-fuchsia-300 border-fuchsia-500/30 shadow-md shadow-fuchsia-500/5"
+                    : "text-slate-400 hover:text-fuchsia-200 hover:bg-fuchsia-500/5 hover:border-fuchsia-500/20 border-transparent"
+                }`}
+              >
+                <BarChart2 className={`h-4 w-4 shrink-0 transition-colors ${activeTab === "stats" ? "text-fuchsia-400" : "text-fuchsia-650"}`} />
+                ANALISIS & STATISTIK
+              </button>
 
-            <button
-              id="tab-backup-btn"
-              onClick={() => setActiveTab("backup")}
-              className={`flex items-center gap-2 px-5 py-3 rounded-xl text-xs font-black tracking-wider uppercase transition-all whitespace-nowrap cursor-pointer border ${
-                activeTab === "backup"
-                  ? "bg-red-550/15 text-red-300 border-red-500/30 shadow-md shadow-red-500/5"
-                  : "text-slate-400 hover:text-red-200 hover:bg-red-500/5 hover:border-red-500/20 border-transparent"
-              }`}
-            >
-              <Save className={`h-4 w-4 shrink-0 transition-colors ${activeTab === "backup" ? "text-red-400" : "text-red-650"}`} />
-              EKSPOR / BACKUP
-            </button>
+              <button
+                id="tab-backup-btn"
+                onClick={() => setActiveTab("backup")}
+                className={`flex items-center gap-2 px-5 py-3 rounded-xl text-xs font-black tracking-wider uppercase transition-all whitespace-nowrap cursor-pointer border ${
+                  activeTab === "backup"
+                    ? "bg-red-550/15 text-red-300 border-red-500/30 shadow-md shadow-red-500/5"
+                    : "text-slate-400 hover:text-red-200 hover:bg-red-500/5 hover:border-red-500/20 border-transparent"
+                }`}
+              >
+                <Save className={`h-4 w-4 shrink-0 transition-colors ${activeTab === "backup" ? "text-red-400" : "text-red-650"}`} />
+                EKSPOR / BACKUP
+              </button>
+            </div>
           </div>
         </div>
       </div>
+
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 relative z-10">
