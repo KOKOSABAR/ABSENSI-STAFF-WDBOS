@@ -78,3 +78,26 @@ export const SHIFT_DETAILS = {
     badgeColor: "bg-purple-100 text-purple-800",
   },
 };
+
+export interface PassportHandoverRecord {
+  id: string;
+  staffName: string;
+  passportNo: string;
+  position: string;
+  dateIn: string; // Masuk
+  dateOut: string; // Pulang
+  notes: string; // Catatan / Keterangan
+  shift?: string; // Shift "PAGI" | "MALAM"
+  officerName: string; // Petugas Penerima
+}
+
+export interface MasterPassport {
+  name: string;
+  passportNo: string;
+  category: string;
+}
+
+export interface CustomOfficer {
+  name: string;
+  category: string;
+}

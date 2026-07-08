@@ -311,9 +311,6 @@ export default function DailyDashboard({
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block font-mono">SHIFT PAGI HARI {selectedDay}</span>
             <span className="text-xl font-black text-emerald-400 tracking-tight block mt-1">{activeDayPagiLogCount} / {pagiStaff.length} Masuk</span>
           </div>
-          <div className="h-11 w-11 bg-emerald-950/40 text-emerald-400 border border-emerald-800/60 rounded-lg flex items-center justify-center font-bold text-sm shrink-0 shadow-lg font-mono">
-            {pagiStaff.length > 0 ? Math.round((activeDayPagiLogCount / pagiStaff.length) * 100) : 0}%
-          </div>
         </div>
 
         <div className="bg-slate-900/90 p-4 rounded-xl border border-slate-800 shadow-xl flex items-center justify-between relative overflow-hidden group">
@@ -321,9 +318,6 @@ export default function DailyDashboard({
           <div>
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block font-mono">SHIFT MALAM HARI {selectedDay}</span>
             <span className="text-xl font-black text-blue-400 tracking-tight block mt-1">{activeDayMalamLogCount} / {malamStaff.length} Masuk</span>
-          </div>
-          <div className="h-11 w-11 bg-blue-950/40 text-blue-400 border border-blue-800/60 rounded-lg flex items-center justify-center font-bold text-sm shrink-0 shadow-lg font-mono">
-            {malamStaff.length > 0 ? Math.round((activeDayMalamLogCount / malamStaff.length) * 100) : 0}%
           </div>
         </div>
       </div>

@@ -1,13 +1,18 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
 @import "tailwindcss";
 
 * {
-  font-family: "Arial Black", "Arial Bold", Gadget, sans-serif !important;
-  text-transform: uppercase !important;
+  font-family: 'Arial Black', 'Arial Bold', Gadget, sans-serif !important;
+  text-transform: uppercase;
+}
+
+.normal-case, .normal-case * {
+  text-transform: none !important;
 }
 
 input::placeholder,
 textarea::placeholder {
-  text-transform: uppercase !important;
+  text-transform: uppercase;
 }
 
 /* ==========================================
@@ -23,7 +28,8 @@ textarea::placeholder {
   background-color: #090e1a !important;
 }
 
-.theme-black .bg-slate-50 {
+.theme-black .bg-slate-50,
+.theme-black .bg-slate-50\/50 {
   background-color: #0c1524 !important;
 }
 
@@ -95,13 +101,14 @@ textarea::placeholder {
 }
 
 /* Eliminate transparent gradient texts in light mode to guarantee 100% legibility */
-.theme-light .bg-clip-text {
+.theme-light .bg-clip-text,
+.theme-light .text-transparent {
   background: none !important;
   background-image: none !important;
-  color: #020617 !important;
+  color: #0f172a !important;
   -webkit-background-clip: unset !important;
   background-clip: unset !important;
-  -webkit-text-fill-color: #020617 !important;
+  -webkit-text-fill-color: #0f172a !important;
 }
 
 /* Override any potential background gradients on general cards to solid crisp white */
@@ -126,6 +133,7 @@ textarea::placeholder {
 }
 
 .theme-light .bg-slate-900,
+.theme-light .bg-slate-900\/90,
 .theme-light .bg-slate-900\/80,
 .theme-light .bg-slate-900\/60,
 .theme-light .bg-slate-900\/50,
@@ -270,6 +278,7 @@ textarea::placeholder {
   color: #b91c1c !important;
 }
 .theme-light .bg-emerald-950\/50,
+.theme-light .bg-emerald-950\/40,
 .theme-light .bg-emerald-950\/25 {
   background-color: #d1fae5 !important;
   color: #047857 !important;
@@ -509,6 +518,207 @@ textarea::placeholder {
 }
 .theme-light .category-label-kasir {
   color: #1d4ed8 !important;
+}
+
+/* ==========================================================
+   CUSTOM IMPROVEMENTS FOR HIGH CONTRAST & PREMIUM LOOK
+   ========================================================== */
+
+/* Placeholders contrast */
+.theme-light input::placeholder,
+.theme-light textarea::placeholder {
+  color: #64748b !important;
+}
+.theme-black input::placeholder,
+.theme-black textarea::placeholder {
+  color: #475569 !important;
+}
+
+/* Dark mode stats card background adjustments (no bright white circles in dark mode) */
+.theme-black .bg-teal-50 {
+  background-color: rgba(13, 148, 136, 0.15) !important;
+}
+.theme-black .bg-teal-50.text-teal-600,
+.theme-black .bg-teal-50 .text-teal-600,
+.theme-black .bg-teal-50.text-teal-700,
+.theme-black .bg-teal-50 .text-teal-700 {
+  color: #2dd4bf !important;
+}
+
+.theme-black .bg-blue-50 {
+  background-color: rgba(59, 130, 246, 0.15) !important;
+}
+.theme-black .bg-blue-50.text-blue-600,
+.theme-black .bg-blue-50 .text-blue-600 {
+  color: #60a5fa !important;
+}
+
+.theme-black .bg-emerald-50 {
+  background-color: rgba(16, 185, 129, 0.15) !important;
+}
+.theme-black .bg-emerald-50.text-emerald-600,
+.theme-black .bg-emerald-50 .text-emerald-600 {
+  color: #34d399 !important;
+}
+
+.theme-black .bg-rose-50,
+.theme-black .bg-rose-50\/50 {
+  background-color: rgba(244, 63, 94, 0.1) !important;
+}
+.theme-black .bg-rose-50.text-rose-600,
+.theme-black .bg-rose-50 .text-rose-600 {
+  color: #f87171 !important;
+}
+
+/* Dark mode badges styling overrides */
+.theme-black .bg-rose-100 {
+  background-color: rgba(244, 63, 94, 0.2) !important;
+}
+.theme-black .text-rose-700,
+.theme-black .text-rose-800 {
+  color: #fda4af !important;
+}
+.theme-black .border-rose-100 {
+  border-color: rgba(244, 63, 94, 0.25) !important;
+}
+.theme-black .bg-emerald-100 {
+  background-color: rgba(16, 185, 129, 0.2) !important;
+}
+.theme-black .text-emerald-800 {
+  color: #6ee7b7 !important;
+}
+.theme-black .bg-slate-200 {
+  background-color: rgba(148, 163, 184, 0.2) !important;
+}
+.theme-black .text-slate-700 {
+  color: #cbd5e1 !important;
+}
+
+/* Light mode text contrast fixes (making sure no pastel text is on light bg) */
+.theme-light .text-emerald-300 {
+  color: #15803d !important; /* Dark green name */
+}
+.theme-light .text-rose-300 {
+  color: #b91c1c !important; /* Dark red name */
+}
+.theme-light .text-rose-400\/80 {
+  color: rgba(185, 28, 28, 0.8) !important;
+}
+.theme-light .text-teal-400\/80 {
+  color: rgba(15, 118, 110, 0.8) !important;
+}
+
+/* Light mode gradient text override for status badges to keep white text readable */
+.theme-light span.bg-gradient-to-r.from-emerald-600,
+.theme-light span.bg-gradient-to-r.from-rose-600 {
+  color: #ffffff !important;
+}
+
+/* Light mode column headers for shift pagi and shift malam */
+.theme-light .bg-\[\#183e2b\] {
+  background-color: #d1fae5 !important;
+  border-bottom-color: #a7f3d0 !important;
+}
+.theme-light .bg-\[\#183e2b\] h3.text-emerald-400 {
+  color: #065f46 !important;
+}
+.theme-light .bg-\[\#183e2b\] p.text-emerald-300 {
+  color: #047857 !important;
+}
+
+.theme-light .bg-\[\#1a2f4c\] {
+  background-color: #dbeafe !important;
+  border-bottom-color: #bfdbfe !important;
+}
+.theme-light .bg-\[\#1a2f4c\] h3.text-blue-400 {
+  color: #1e3a8a !important;
+}
+.theme-light .bg-\[\#1a2f4c\] p.text-blue-300 {
+  color: #1d4ed8 !important;
+}
+
+/* Hover state fix in theme-black to prevent white background on hovered elements */
+.theme-black tr:hover,
+.theme-black tr:hover td,
+.theme-black tr:hover th,
+.theme-black td:hover,
+.theme-black th:hover,
+.theme-black .hover\:bg-slate-50:hover,
+.theme-black .hover\:bg-slate-100:hover,
+.theme-black .hover\:bg-slate-200:hover {
+  background-color: #111b30 !important;
+}
+
+/* Header subtitle legibility in light mode */
+.theme-light header p,
+.theme-light header span,
+.theme-light .text-teal-400\/80 {
+  color: #0f766e !important;
+}
+
+/* Light mode hover state overrides to prevent dark backgrounds on hover */
+.theme-light .hover\:bg-slate-950:hover,
+.theme-light tr.hover\:bg-slate-50:hover,
+.theme-light tr:hover,
+.theme-light tr:hover td,
+.theme-light tr:hover th,
+.theme-light td:hover,
+.theme-light th:hover,
+.theme-light .hover\:bg-slate-900\/40:hover,
+.theme-light .hover\:bg-slate-900\/30:hover,
+.theme-light .hover\:bg-slate-800:hover,
+.theme-light .hover\:bg-slate-850:hover,
+.theme-light .hover\:bg-slate-900:hover {
+  background-color: #f1f5f9 !important;
+}
+
+/* Light mode overrides for clocked in table rows to make background clean and light */
+.theme-light tr.bg-gradient-to-r[class*="from-emerald-950"],
+.theme-light tr[class*="from-emerald-950"],
+.theme-light tr[class*="from-emerald-950"] td {
+  background: #e6f4ea !important;
+  background-image: none !important;
+}
+
+.theme-light tr.bg-gradient-to-r[class*="from-rose-950"],
+.theme-light tr[class*="from-rose-950"],
+.theme-light tr[class*="from-rose-950"] td {
+  background: #fce8e6 !important;
+  background-image: none !important;
+}
+
+/* Force date controller counts (green and blue blocks) to have white text in light mode */
+.theme-light [class*="from-emerald-600"],
+.theme-light [class*="from-blue-600"],
+.theme-light [class*="bg-emerald-600"],
+.theme-light [class*="bg-blue-600"] {
+  color: #ffffff !important;
+}
+
+/* Generic light mode overrides for all dark pastel container backgrounds with opacity */
+.theme-light [class*="bg-emerald-950/"] {
+  background-color: #d1fae5 !important;
+  color: #047857 !important;
+}
+.theme-light [class*="bg-rose-950/"] {
+  background-color: #fee2e2 !important;
+  color: #b91c1c !important;
+}
+.theme-light [class*="bg-teal-950/"] {
+  background-color: #ccfbf1 !important;
+  color: #0f766e !important;
+}
+.theme-light [class*="bg-blue-950/"] {
+  background-color: #dbeafe !important;
+  color: #1d4ed8 !important;
+}
+.theme-light [class*="bg-amber-950/"] {
+  background-color: #fef3c7 !important;
+  color: #b45309 !important;
+}
+.theme-light [class*="bg-slate-900/"] {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
 }
 
 

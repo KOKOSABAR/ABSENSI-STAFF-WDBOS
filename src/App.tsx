@@ -3,30 +3,91 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { getInitialStaffShifts, getInitialAttendanceLogs } from "./data";
-import { StaffShift, ClockInLog, MONTHS_INDONESIAN } from "./types";
+import { StaffShift, ClockInLog, MONTHS_INDONESIAN, PassportHandoverRecord, MasterPassport, CustomOfficer } from "./types";
 import DailyDashboard from "./components/DailyDashboard";
 import AttendanceTable from "./components/AttendanceTable";
 import ClockInPanel from "./components/ClockInPanel";
 import ClockInLogs from "./components/ClockInLogs";
 import DashboardStats from "./components/DashboardStats";
 import ImportExport from "./components/ImportExport";
-import { Grid, Clock, ListTodo, BarChart2, Save, Calendar, RefreshCw, LayoutDashboard, Cloud, CloudOff, CloudLightning, Sun, Moon } from "lucide-react";
-import { getGasUrl, syncUpsertLog, syncDeleteLog, fetchDataFromGoogleSheets, syncAllToGoogleSheets, cleanTimeStr } from "./utils/googleSheets";
+import PassportHandover from "./components/PassportHandover";
+import { Grid, Clock, ListTodo, BarChart2, Save, Calendar, RefreshCw, LayoutDashboard, Cloud, CloudOff, CloudLightning, Lock, ShieldAlert, Fingerprint } from "lucide-react";
+import { getGasUrl, syncUpsertLog, syncDeleteLog, fetchDataFromGoogleSheets, syncAllToGoogleSheets, syncUpsertPassport, syncDeletePassport, syncScheduleToGoogleSheets, cleanTimeStr } from "./utils/googleSheets";
 import DatePicker from "./components/DatePicker";
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<"daily" | "spreadsheet" | "clockin" | "logs" | "stats" | "backup">("daily");
+  const VALID_TABS = ["daily", "spreadsheet", "clockin", "logs", "stats", "backup", "passport"] as const;
+  type TabType = typeof VALID_TABS[number];
 
-  const [theme, setTheme] = useState<"light" | "black">(() => {
-    const saved = localStorage.getItem("absen_theme");
-    return (saved === "light" || saved === "black") ? saved : "black";
+  const [activeTab, setActiveTabRaw] = useState<TabType>(() => {
+    const saved = sessionStorage.getItem("absen_active_tab") as TabType | null;
+    return saved && (VALID_TABS as readonly string[]).includes(saved) ? saved : "daily";
   });
 
-  useEffect(() => {
-    localStorage.setItem("absen_theme", theme);
-  }, [theme]);
+  const setActiveTab = (tab: TabType) => {
+    sessionStorage.setItem("absen_active_tab", tab);
+    setActiveTabRaw(tab);
+    // Saat buka tab passport, langsung pull data terbaru dari GAS agar selalu sinkron
+    if (tab === "passport" && getGasUrl()) {
+      setTimeout(() => handlePullData(false), 300);
+    }
+  };
+
+  // Track whether the passport tab password has been entered this session
+  const passportUnlocked = sessionStorage.getItem("absen_passport_unlocked") === "true";
+
+  // Keep track of the timestamp of the last local write/mutation to prevent the background silent sync
+  // from overwriting the React state with stale data from the spreadsheet before the write finishes.
+  const lastWriteTimeRef = useRef<number>(0);
+
+  const recordLocalWrite = useCallback(() => {
+    lastWriteTimeRef.current = Date.now();
+  }, []);
+
+  // Timer ref for the post-write verification pull
+  const pendingPullTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Theme locked to black (dark mode)
+  const theme = "black";
+
+  // Custom luxury password modal state
+  const [passwordModal, setPasswordModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: "",
+    onConfirm: () => {},
+  });
+  const [passwordInput, setPasswordInput] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+
+  // Store onConfirm in a ref so updating it never triggers a re-render of the modal
+  const passwordOnConfirmRef = useRef<() => void>(() => {});
+
+  const requestPassword = useCallback((title: string, onConfirm: () => void) => {
+    passwordOnConfirmRef.current = onConfirm;
+    setPasswordInput("");
+    setPasswordError("");
+    setPasswordModal({
+      isOpen: true,
+      title,
+      onConfirm, // kept in state only for display; actual call uses ref
+    });
+  }, []);
+
+  const handlePasswordSubmit = useCallback((e: React.FormEvent) => {
+    e.preventDefault();
+    if (passwordInput === "wdbos88") {
+      passwordOnConfirmRef.current();
+      setPasswordModal((prev) => ({ ...prev, isOpen: false }));
+    } else {
+      setPasswordError("PASSWORD SALAH! AKSES DITOLAK.");
+    }
+  }, [passwordInput]);
 
   const [syncStatus, setSyncStatus] = useState<"synced" | "syncing" | "error" | "unconfigured">(() => {
     return getGasUrl() ? "synced" : "unconfigured";
@@ -43,9 +104,22 @@ export default function App() {
     setSyncStatus("syncing");
     try {
       const result = await fetchDataFromGoogleSheets(selectedMonth, selectedYear);
-      if (result.success && result.staffShifts && result.logs) {
-        setStaffShifts(result.staffShifts);
-        setLogs(result.logs);
+      if (result.success) {
+        if (result.staffShifts) {
+          setStaffShifts(result.staffShifts);
+        }
+        if (result.logs) {
+          setLogs(result.logs);
+        }
+        if (result.passports) {
+          setPassportRecords(result.passports);
+        }
+        if (result.masterPassports) {
+          setMasterPassports(result.masterPassports);
+        }
+        if (result.officers) {
+          setCustomOfficers(result.officers);
+        }
         setSyncStatus("synced");
         if (showNotification) alert("Berhasil menarik data terbaru dari Google Sheets!");
       } else {
@@ -73,7 +147,10 @@ export default function App() {
   });
 
   useEffect(() => {
-    localStorage.setItem("absen_selected_day", selectedDay.toString());
+    const t = setTimeout(() => {
+      localStorage.setItem("absen_selected_day", selectedDay.toString());
+    }, 400);
+    return () => clearTimeout(t);
   }, [selectedDay]);
 
   const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
@@ -119,6 +196,28 @@ export default function App() {
     return getInitialAttendanceLogs(initialShifts);
   });
 
+  const [passportRecords, setPassportRecords] = useState<PassportHandoverRecord[]>(() => {
+    const saved = localStorage.getItem("absen_passport_records");
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error("Failed to parse saved passport records", e);
+      }
+    }
+    return [];
+  });
+
+  const [masterPassports, setMasterPassports] = useState<MasterPassport[]>([]);
+  const [customOfficers, setCustomOfficers] = useState<CustomOfficer[]>([]);
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      localStorage.setItem("absen_passport_records", JSON.stringify(passportRecords));
+    }, 400);
+    return () => clearTimeout(t);
+  }, [passportRecords]);
+
   // Persist selected month/year
   useEffect(() => {
     localStorage.setItem("absen_selected_month", selectedMonth.toString());
@@ -163,11 +262,14 @@ export default function App() {
     }
   }, [selectedMonth, selectedYear]);
 
-  // Sync shifts to local storage
+  // Sync shifts to local storage (debounced 400ms to avoid blocking UI)
   useEffect(() => {
     const key = `absen_staff_shifts_${selectedYear}_${selectedMonth}`;
-    localStorage.setItem(key, JSON.stringify(staffShifts));
-    localStorage.setItem("absen_staff_shifts", JSON.stringify(staffShifts));
+    const t = setTimeout(() => {
+      localStorage.setItem(key, JSON.stringify(staffShifts));
+      localStorage.setItem("absen_staff_shifts", JSON.stringify(staffShifts));
+    }, 400);
+    return () => clearTimeout(t);
   }, [staffShifts, selectedMonth, selectedYear]);
 
   // Periodic silent background sync (every 10 seconds) to sync other clients
@@ -176,29 +278,103 @@ export default function App() {
     if (!url) return;
 
     const interval = setInterval(() => {
+      // Skip silent sync if a local write occurred in the last 15 seconds
+      if (Date.now() - lastWriteTimeRef.current < 15000) {
+        console.log("Skipping silent sync: local write in progress or completed recently.");
+        return;
+      }
+
       fetchDataFromGoogleSheets(selectedMonth, selectedYear)
         .then((result) => {
-          if (result.success && result.staffShifts && result.logs) {
-            setStaffShifts(result.staffShifts);
-            setLogs(result.logs);
+          if (result.success) {
+            // Also check if a local write occurred during the async fetch call
+            if (Date.now() - lastWriteTimeRef.current < 15000) {
+              console.log("Skipping applying silent sync: local write occurred during fetch.");
+              return;
+            }
+            if (result.staffShifts) {
+              setStaffShifts(result.staffShifts);
+            }
+            if (result.logs) {
+              setLogs(result.logs);
+            }
+            if (result.passports) {
+              setPassportRecords(result.passports);
+            }
+            if (result.masterPassports) {
+              setMasterPassports(result.masterPassports);
+            }
+            if (result.officers) {
+              setCustomOfficers(result.officers);
+            }
             setSyncStatus("synced");
           }
         })
         .catch((err) => {
           console.error("Silent sync failed", err);
         });
-    }, 10000); // 10 seconds
+    }, 30000); // 30 seconds — cukup sering tanpa bersaing dengan aksi user
 
     return () => clearInterval(interval);
   }, [selectedMonth, selectedYear]);
 
-  // Sync logs to local storage
+  // Sync logs to local storage (debounced 400ms)
   useEffect(() => {
-    localStorage.setItem("absen_logs", JSON.stringify(logs));
+    const t = setTimeout(() => {
+      localStorage.setItem("absen_logs", JSON.stringify(logs));
+    }, 400);
+    return () => clearTimeout(t);
   }, [logs]);
 
-  // Handlers
+  const handleAddPassport = (newRecordData: Omit<PassportHandoverRecord, "id">) => {
+    recordLocalWrite();
+    const newRecord: PassportHandoverRecord = {
+      id: `ppt-${Date.now()}`,
+      ...newRecordData,
+    };
+    setPassportRecords((prev) => [newRecord, ...prev]);
+
+    // Kirim langsung ke Google Sheets (Sangat Cepat & Efisien karena single-row update)
+    if (getGasUrl()) {
+      setSyncStatus("syncing");
+      syncUpsertPassport(newRecord)
+        .then((ok) => setSyncStatus(ok ? "synced" : "error"))
+        .catch(() => setSyncStatus("error"));
+    }
+  };
+
+  const handleUpdatePassport = (updatedRecord: PassportHandoverRecord) => {
+    recordLocalWrite();
+    setPassportRecords((prev) =>
+      prev.map((r) => (r.id === updatedRecord.id ? updatedRecord : r))
+    );
+
+    // Kirim langsung ke Google Sheets (Sangat Cepat & Efisien)
+    if (getGasUrl()) {
+      setSyncStatus("syncing");
+      syncUpsertPassport(updatedRecord)
+        .then((ok) => setSyncStatus(ok ? "synced" : "error"))
+        .catch(() => setSyncStatus("error"));
+    }
+  };
+
+  const handleDeletePassport = (id: string) => {
+    requestPassword("MASUKKAN PASSWORD UNTUK MENGHAPUS DATA SERAH TERIMA PASPOR:", () => {
+      recordLocalWrite();
+      setPassportRecords((prev) => prev.filter((r) => r.id !== id));
+
+      // Hapus langsung dari Google Sheets (Sangat Cepat & Efisien)
+      if (getGasUrl()) {
+        setSyncStatus("syncing");
+        syncDeletePassport(id)
+          .then((ok) => setSyncStatus(ok ? "synced" : "error"))
+          .catch(() => setSyncStatus("error"));
+      }
+    });
+  };
+
   const handleUpdateSchedule = (staffId: string, dayIndex: number, newValue: string) => {
+    recordLocalWrite();
     const updated = staffShifts.map((staff) => {
       if (staff.id === staffId) {
         const updatedSchedule = [...staff.schedule];
@@ -209,16 +385,17 @@ export default function App() {
     });
     setStaffShifts(updated);
 
-    // Kirim otomatis ke Google Sheets
+    // Kirim cepat khusus jadwal ke Google Sheets
     if (getGasUrl()) {
       setSyncStatus("syncing");
-      syncAllToGoogleSheets(updated, logs, selectedMonth, selectedYear)
-        .then((res) => setSyncStatus(res.success ? "synced" : "error"))
+      syncScheduleToGoogleSheets(updated, selectedMonth, selectedYear)
+        .then((ok) => setSyncStatus(ok ? "synced" : "error"))
         .catch(() => setSyncStatus("error"));
     }
   };
 
   const handleAddStaff = (name: string, category: "CS LINE" | "CS LC" | "KAPTEN KASIR" | "KASIR") => {
+    recordLocalWrite();
     const newId = `custom-staff-${Date.now()}-${name.toLowerCase().replace(/[^a-z0-9]/g, "-")}`;
     const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
     const defaultSchedule = Array(daysInMonth).fill("1");
@@ -233,31 +410,35 @@ export default function App() {
     const updated = [...staffShifts, newStaff];
     setStaffShifts(updated);
 
-    // Kirim otomatis ke Google Sheets
+    // Kirim cepat khusus jadwal ke Google Sheets
     if (getGasUrl()) {
       setSyncStatus("syncing");
-      syncAllToGoogleSheets(updated, logs, selectedMonth, selectedYear)
-        .then((res) => setSyncStatus(res.success ? "synced" : "error"))
+      syncScheduleToGoogleSheets(updated, selectedMonth, selectedYear)
+        .then((ok) => setSyncStatus(ok ? "synced" : "error"))
         .catch(() => setSyncStatus("error"));
     }
   };
 
   const handleDeleteStaff = (staffId: string) => {
-    const updatedShifts = staffShifts.filter((s) => s.id !== staffId);
-    const updatedLogs = logs.filter((l) => l.staffId !== staffId);
-    setStaffShifts(updatedShifts);
-    setLogs(updatedLogs);
+    requestPassword("MASUKKAN PASSWORD UNTUK MENGHAPUS STAFF:", () => {
+      recordLocalWrite();
+      const updatedShifts = staffShifts.filter((s) => s.id !== staffId);
+      const updatedLogs = logs.filter((l) => l.staffId !== staffId);
+      setStaffShifts(updatedShifts);
+      setLogs(updatedLogs);
 
-    // Kirim otomatis ke Google Sheets
-    if (getGasUrl()) {
-      setSyncStatus("syncing");
-      syncAllToGoogleSheets(updatedShifts, updatedLogs, selectedMonth, selectedYear)
-        .then((res) => setSyncStatus(res.success ? "synced" : "error"))
-        .catch(() => setSyncStatus("error"));
-    }
+      // Kirim otomatis ke Google Sheets
+      if (getGasUrl()) {
+        setSyncStatus("syncing");
+        syncAllToGoogleSheets(updatedShifts, updatedLogs, passportRecords, selectedMonth, selectedYear)
+          .then((res) => setSyncStatus(res.success ? "synced" : "error"))
+          .catch(() => setSyncStatus("error"));
+      }
+    });
   };
 
   const handleAddLog = (newLogData: Omit<ClockInLog, "id" | "timestamp">) => {
+    recordLocalWrite();
     const newLog: ClockInLog = {
       ...newLogData,
       id: `log-${Date.now()}-${newLogData.staffId}`,
@@ -286,73 +467,95 @@ export default function App() {
   };
 
   const handleDeleteLog = (logId: string) => {
-    setLogs((prev) => prev.filter((l) => l.id !== logId));
+    requestPassword("MASUKKAN PASSWORD UNTUK MENGHAPUS LOG ABSENSI:", () => {
+      recordLocalWrite();
+      setLogs((prev) => prev.filter((l) => l.id !== logId));
 
-    // HAPUS OTOMATIS DARI GOOGLE SHEETS
-    if (getGasUrl()) {
-      setSyncStatus("syncing");
-      syncDeleteLog(logId)
-        .then((success) => {
-          setSyncStatus(success ? "synced" : "error");
-        })
-        .catch(() => setSyncStatus("error"));
-    }
+      // HAPUS OTOMATIS DARI GOOGLE SHEETS
+      if (getGasUrl()) {
+        setSyncStatus("syncing");
+        syncDeleteLog(logId)
+          .then((success) => {
+            setSyncStatus(success ? "synced" : "error");
+          })
+          .catch(() => setSyncStatus("error"));
+      }
+    });
   };
 
   const handleClearAllLogs = () => {
-    setLogs([]);
+    requestPassword("MASUKKAN PASSWORD UNTUK MENGHAPUS SEMUA LOG ABSENSI:", () => {
+      recordLocalWrite();
+      setLogs([]);
 
-    // Kirim otomatis ke Google Sheets
-    if (getGasUrl()) {
-      setSyncStatus("syncing");
-      syncAllToGoogleSheets(staffShifts, [], selectedMonth, selectedYear)
-        .then((res) => setSyncStatus(res.success ? "synced" : "error"))
-        .catch(() => setSyncStatus("error"));
-    }
+      // Kirim otomatis ke Google Sheets
+      if (getGasUrl()) {
+        setSyncStatus("syncing");
+        syncAllToGoogleSheets(staffShifts, [], passportRecords, selectedMonth, selectedYear)
+          .then((res) => setSyncStatus(res.success ? "synced" : "error"))
+          .catch(() => setSyncStatus("error"));
+      }
+    });
   };
 
   const handleResetToDefault = () => {
-    const key = `absen_staff_shifts_${selectedYear}_${selectedMonth}`;
-    localStorage.removeItem(key);
-    localStorage.removeItem("absen_staff_shifts");
-    localStorage.removeItem("absen_logs");
-    const defaults = getInitialStaffShifts();
-    setStaffShifts(defaults);
-    const seeded = getInitialAttendanceLogs(defaults).map(l => ({
-      ...l,
-      month: selectedMonth,
-      year: selectedYear
-    }));
-    setLogs(seeded);
+    requestPassword("MASUKKAN PASSWORD UNTUK MERESET SELURUH SISTEM:", () => {
+      recordLocalWrite();
+      const key = `absen_staff_shifts_${selectedYear}_${selectedMonth}`;
+      localStorage.removeItem(key);
+      localStorage.removeItem("absen_staff_shifts");
+      localStorage.removeItem("absen_logs");
+      const defaults = getInitialStaffShifts();
+      setStaffShifts(defaults);
+      const seeded = getInitialAttendanceLogs(defaults).map(l => ({
+        ...l,
+        month: selectedMonth,
+        year: selectedYear
+      }));
+      setLogs(seeded);
 
-    // Kirim otomatis ke Google Sheets
-    if (getGasUrl()) {
-      setSyncStatus("syncing");
-      syncAllToGoogleSheets(defaults, seeded, selectedMonth, selectedYear)
-        .then((res) => setSyncStatus(res.success ? "synced" : "error"))
-        .catch(() => setSyncStatus("error"));
-    }
+      // Kirim otomatis ke Google Sheets
+      if (getGasUrl()) {
+        setSyncStatus("syncing");
+        syncAllToGoogleSheets(defaults, seeded, [], selectedMonth, selectedYear)
+          .then((res) => setSyncStatus(res.success ? "synced" : "error"))
+          .catch(() => setSyncStatus("error"));
+      }
+    });
   };
 
   const handleImportState = (newState: { staffShifts: StaffShift[]; logs: ClockInLog[] }) => {
+    recordLocalWrite();
     setStaffShifts(newState.staffShifts);
     setLogs(newState.logs);
 
     // Kirim otomatis ke Google Sheets
     if (getGasUrl()) {
       setSyncStatus("syncing");
-      syncAllToGoogleSheets(newState.staffShifts, newState.logs, selectedMonth, selectedYear)
+      syncAllToGoogleSheets(newState.staffShifts, newState.logs, passportRecords, selectedMonth, selectedYear)
         .then((res) => setSyncStatus(res.success ? "synced" : "error"))
         .catch(() => setSyncStatus("error"));
     }
   };
 
   const handleImportParsedShifts = (parsed: StaffShift[], mode: "merge" | "overwrite") => {
-    let updated: StaffShift[];
+    const applyImport = (updatedShifts: StaffShift[]) => {
+      setStaffShifts(updatedShifts);
+      if (getGasUrl()) {
+        setSyncStatus("syncing");
+        syncAllToGoogleSheets(updatedShifts, logs, passportRecords, selectedMonth, selectedYear)
+          .then((res) => setSyncStatus(res.success ? "synced" : "error"))
+          .catch(() => setSyncStatus("error"));
+      }
+    };
+
+    recordLocalWrite();
     if (mode === "overwrite") {
-      updated = parsed;
+      requestPassword("MASUKKAN PASSWORD UNTUK MENGHAPUS & MENGGANTI SELURUH JADWAL SISTEM:", () => {
+        applyImport(parsed);
+      });
     } else {
-      updated = [...staffShifts];
+      const updated = [...staffShifts];
       parsed.forEach((newStaff) => {
         const existingIdx = updated.findIndex(
           (s) => s.name.trim().toUpperCase() === newStaff.name.trim().toUpperCase()
@@ -367,20 +570,12 @@ export default function App() {
           updated.push(newStaff);
         }
       });
-    }
-    setStaffShifts(updated);
-
-    // Kirim otomatis ke Google Sheets
-    if (getGasUrl()) {
-      setSyncStatus("syncing");
-      syncAllToGoogleSheets(updated, logs, selectedMonth, selectedYear)
-        .then((res) => setSyncStatus(res.success ? "synced" : "error"))
-        .catch(() => setSyncStatus("error"));
+      applyImport(updated);
     }
   };
 
   return (
-    <div className={`min-h-screen ${theme === "light" ? "bg-slate-50 text-slate-900 theme-light" : "bg-[#070b13] text-slate-100 theme-black"} flex flex-col font-sans relative overflow-x-hidden`} id="app-root">
+    <div className="min-h-screen bg-[#070b13] text-slate-100 theme-black flex flex-col font-sans relative overflow-x-hidden" id="app-root">
       {/* Abstract luxury ambient glows */}
       <div className="absolute top-0 left-1/4 w-96 h-96 bg-teal-500/10 rounded-full blur-3xl pointer-events-none"></div>
       <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none"></div>
@@ -461,25 +656,7 @@ export default function App() {
                 />
               </div>
 
-              {/* Theme Selector Toggle Button */}
-              <button
-                id="theme-toggle-btn"
-                onClick={() => setTheme(theme === "light" ? "black" : "light")}
-                className="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl px-3.5 py-1.5 text-xs font-black tracking-wider uppercase transition-all cursor-pointer text-teal-400 shadow-lg font-mono"
-                title={theme === "light" ? "Ganti ke Tema Black" : "Ganti ke Tema Light"}
-              >
-                {theme === "light" ? (
-                  <>
-                    <Moon className="h-4 w-4 text-teal-400 shrink-0" />
-                    <span className="hidden sm:inline">BLACK</span>
-                  </>
-                ) : (
-                  <>
-                    <Sun className="h-4 w-4 text-teal-400 shrink-0" />
-                    <span className="hidden sm:inline">LIGHT</span>
-                  </>
-                )}
-              </button>
+
             </div>
           </div>
         </div>
@@ -494,12 +671,36 @@ export default function App() {
               onClick={() => setActiveTab("daily")}
               className={`flex items-center gap-2 px-5 py-3 rounded-xl text-xs font-black tracking-wider uppercase transition-all whitespace-nowrap cursor-pointer border ${
                 activeTab === "daily"
-                  ? "bg-gradient-to-br from-teal-500/15 to-emerald-500/10 text-teal-300 shadow-md border-teal-500/30"
-                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-900/40 border-transparent"
+                  ? "bg-teal-550/15 text-teal-300 border-teal-500/30 shadow-md shadow-teal-500/5"
+                  : "text-slate-400 hover:text-teal-200 hover:bg-teal-500/5 hover:border-teal-500/20 border-transparent"
               }`}
             >
-              <LayoutDashboard className="h-4 w-4 text-teal-500 shrink-0" />
+              <LayoutDashboard className={`h-4 w-4 shrink-0 transition-colors ${activeTab === "daily" ? "text-teal-400" : "text-teal-650"}`} />
               DASHBOARD ABSENSI HARIAN (WDBOS)
+            </button>
+
+            <button
+              id="tab-passport-btn"
+               onClick={() => {
+                 if (activeTab !== "passport") {
+                   if (passportUnlocked) {
+                     setActiveTab("passport");
+                   } else {
+                     requestPassword("AKSES HALAMAN SERAH TERIMA PASPOR", () => {
+                       sessionStorage.setItem("absen_passport_unlocked", "true");
+                       setActiveTab("passport");
+                     });
+                   }
+                 }
+               }}
+              className={`flex items-center gap-2 px-5 py-3 rounded-xl text-xs font-black tracking-wider uppercase transition-all whitespace-nowrap cursor-pointer border ${
+                activeTab === "passport"
+                  ? "bg-rose-550/15 text-rose-300 border-rose-500/30 shadow-md shadow-rose-500/5"
+                  : "text-slate-400 hover:text-rose-200 hover:bg-rose-500/5 hover:border-rose-500/20 border-transparent"
+              }`}
+            >
+              <Fingerprint className={`h-4 w-4 shrink-0 transition-colors ${activeTab === "passport" ? "text-rose-400" : "text-rose-650"}`} />
+              SERAH TERIMA PASPOR
             </button>
 
             <button
@@ -507,11 +708,11 @@ export default function App() {
               onClick={() => setActiveTab("spreadsheet")}
               className={`flex items-center gap-2 px-5 py-3 rounded-xl text-xs font-black tracking-wider uppercase transition-all whitespace-nowrap cursor-pointer border ${
                 activeTab === "spreadsheet"
-                  ? "bg-gradient-to-br from-teal-500/15 to-emerald-500/10 text-teal-300 shadow-md border-teal-500/30"
-                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-900/40 border-transparent"
+                  ? "bg-indigo-550/15 text-indigo-300 border-indigo-500/30 shadow-md shadow-indigo-500/5"
+                  : "text-slate-400 hover:text-indigo-200 hover:bg-indigo-500/5 hover:border-indigo-500/20 border-transparent"
               }`}
             >
-              <Grid className="h-4 w-4 text-teal-500 shrink-0" />
+              <Grid className={`h-4 w-4 shrink-0 transition-colors ${activeTab === "spreadsheet" ? "text-indigo-400" : "text-indigo-650"}`} />
               TABEL SHIFT (SPREADSHEET)
             </button>
 
@@ -520,11 +721,11 @@ export default function App() {
               onClick={() => setActiveTab("clockin")}
               className={`flex items-center gap-2 px-5 py-3 rounded-xl text-xs font-black tracking-wider uppercase transition-all whitespace-nowrap cursor-pointer border ${
                 activeTab === "clockin"
-                  ? "bg-gradient-to-br from-teal-500/15 to-emerald-500/10 text-teal-300 shadow-md border-teal-500/30"
-                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-900/40 border-transparent"
+                  ? "bg-amber-550/15 text-amber-300 border-amber-500/30 shadow-md shadow-amber-500/5"
+                  : "text-slate-400 hover:text-amber-200 hover:bg-amber-500/5 hover:border-amber-500/20 border-transparent"
               }`}
             >
-              <Clock className="h-4 w-4 text-teal-500 shrink-0" />
+              <Clock className={`h-4 w-4 shrink-0 transition-colors ${activeTab === "clockin" ? "text-amber-400" : "text-amber-655"}`} />
               CLOCK-IN MANDIRI (SIMULASI)
             </button>
 
@@ -533,11 +734,11 @@ export default function App() {
               onClick={() => setActiveTab("logs")}
               className={`flex items-center gap-2 px-5 py-3 rounded-xl text-xs font-black tracking-wider uppercase transition-all whitespace-nowrap cursor-pointer border ${
                 activeTab === "logs"
-                  ? "bg-gradient-to-br from-teal-500/15 to-emerald-500/10 text-teal-300 shadow-md border-teal-500/30"
-                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-900/40 border-transparent"
+                  ? "bg-cyan-550/15 text-cyan-300 border-cyan-500/30 shadow-md shadow-cyan-500/5"
+                  : "text-slate-400 hover:text-cyan-200 hover:bg-cyan-500/5 hover:border-cyan-500/20 border-transparent"
               }`}
             >
-              <ListTodo className="h-4 w-4 text-teal-500 shrink-0" />
+              <ListTodo className={`h-4 w-4 shrink-0 transition-colors ${activeTab === "logs" ? "text-cyan-400" : "text-cyan-650"}`} />
               LOG KEHADIRAN ({logs.filter(l => (l.month !== undefined ? l.month : 6) === selectedMonth && (l.year !== undefined ? l.year : 2026) === selectedYear).length})
             </button>
 
@@ -546,11 +747,11 @@ export default function App() {
               onClick={() => setActiveTab("stats")}
               className={`flex items-center gap-2 px-5 py-3 rounded-xl text-xs font-black tracking-wider uppercase transition-all whitespace-nowrap cursor-pointer border ${
                 activeTab === "stats"
-                  ? "bg-gradient-to-br from-teal-500/15 to-emerald-500/10 text-teal-300 shadow-md border-teal-500/30"
-                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-900/40 border-transparent"
+                  ? "bg-fuchsia-550/15 text-fuchsia-300 border-fuchsia-500/30 shadow-md shadow-fuchsia-500/5"
+                  : "text-slate-400 hover:text-fuchsia-200 hover:bg-fuchsia-500/5 hover:border-fuchsia-500/20 border-transparent"
               }`}
             >
-              <BarChart2 className="h-4 w-4 text-teal-500 shrink-0" />
+              <BarChart2 className={`h-4 w-4 shrink-0 transition-colors ${activeTab === "stats" ? "text-fuchsia-400" : "text-fuchsia-650"}`} />
               ANALISIS & STATISTIK
             </button>
 
@@ -559,11 +760,11 @@ export default function App() {
               onClick={() => setActiveTab("backup")}
               className={`flex items-center gap-2 px-5 py-3 rounded-xl text-xs font-black tracking-wider uppercase transition-all whitespace-nowrap cursor-pointer border ${
                 activeTab === "backup"
-                  ? "bg-gradient-to-br from-teal-500/15 to-emerald-500/10 text-teal-300 shadow-md border-teal-500/30"
-                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-900/40 border-transparent"
+                  ? "bg-red-550/15 text-red-300 border-red-500/30 shadow-md shadow-red-500/5"
+                  : "text-slate-400 hover:text-red-200 hover:bg-red-500/5 hover:border-red-500/20 border-transparent"
               }`}
             >
-              <Save className="h-4 w-4 text-teal-500 shrink-0" />
+              <Save className={`h-4 w-4 shrink-0 transition-colors ${activeTab === "backup" ? "text-red-400" : "text-red-650"}`} />
               EKSPOR / BACKUP
             </button>
           </div>
@@ -690,12 +891,35 @@ export default function App() {
                   <ImportExport
                     staffShifts={staffShifts}
                     logs={activeLogs}
+                    passportRecords={passportRecords}
                     onResetToDefault={handleResetToDefault}
                     onImportState={handleImportState}
                     selectedMonth={selectedMonth}
                     selectedYear={selectedYear}
                     syncStatus={syncStatus}
                     setSyncStatus={setSyncStatus}
+                  />
+                </div>
+              )}
+              {activeTab === "passport" && (
+                <div className="space-y-6">
+                  <div className="border-l-4 border-teal-505 pl-4 py-1 bg-slate-900/30 rounded-r-2xl pr-4 border border-slate-900/50 backdrop-blur-sm">
+                    <h2 className="text-lg sm:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-slate-100 to-teal-400 tracking-wider font-mono">SERAH TERIMA PASPOR STAFF</h2>
+                    <p className="text-[10px] text-slate-400 font-mono mt-1 font-bold">
+                      SISTEM PENDATAAN DAN TRACER SERAH TERIMA DOKUMEN PASPOR STAFF WDBOS.
+                    </p>
+                  </div>
+                  <PassportHandover
+                    records={passportRecords}
+                    staffShifts={staffShifts}
+                    selectedDay={selectedDay}
+                    selectedMonth={selectedMonth}
+                    selectedYear={selectedYear}
+                    onAddRecord={handleAddPassport}
+                    onUpdateRecord={handleUpdatePassport}
+                    onDeleteRecord={handleDeletePassport}
+                    masterPassports={masterPassports}
+                    customOfficers={customOfficers}
                   />
                 </div>
               )}
@@ -713,6 +937,78 @@ export default function App() {
           </span>
         </div>
       </footer>
+
+      {/* Custom Luxury Password modal */}
+      {passwordModal.isOpen && (
+        <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in animate-duration-300">
+          <form
+            onSubmit={handlePasswordSubmit}
+            className="bg-slate-900/95 border-2 border-slate-800 rounded-3xl p-6 w-full max-w-md shadow-2xl relative overflow-hidden flex flex-col gap-4 animate-zoom-in animate-duration-300"
+          >
+            {/* Top accent line */}
+            <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-teal-500 to-emerald-500"></div>
+            
+            {/* Header info */}
+            <div className="flex items-center gap-3.5 border-b border-slate-800/80 pb-3">
+              <div className="p-2.5 bg-rose-950/30 rounded-2xl text-rose-400 border border-rose-900/40">
+                <Lock className="h-5 w-5" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-black text-slate-200 text-sm tracking-wide uppercase">AUTENTIKASI DIJAMIN</h3>
+                <p className="text-[9px] text-slate-500 font-mono tracking-widest uppercase mt-0.5">Wajib memasukkan password admin untuk tindakan ini</p>
+              </div>
+            </div>
+
+            {/* Prompt title */}
+            <div className="text-xs font-black text-slate-300 uppercase tracking-wider leading-relaxed font-mono pt-1">
+              {passwordModal.title}
+            </div>
+
+            {/* Input field */}
+            <div className="space-y-1">
+              <input
+                type="password"
+                autoFocus
+                required
+                placeholder="PASSWORD KUNCI"
+                value={passwordInput}
+                onChange={(e) => {
+                  setPasswordInput(e.target.value);
+                  if (passwordError) setPasswordError("");
+                }}
+                className={`w-full bg-slate-950 border ${
+                  passwordError ? "border-rose-500/80 focus:ring-rose-500/40" : "border-slate-850 focus:ring-teal-500/40"
+                } rounded-xl px-4 py-3 text-sm text-slate-100 placeholder-slate-600 focus:ring-4 focus:outline-none tracking-widest text-center uppercase font-mono transition-all`}
+              />
+              
+              {/* Error message */}
+              {passwordError && (
+                <div className="flex items-center gap-1.5 text-[9px] font-black text-rose-400 uppercase tracking-widest justify-center font-mono py-0.5">
+                  <ShieldAlert className="h-3.5 w-3.5 text-rose-400 shrink-0 animate-bounce" />
+                  <span>{passwordError}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Action buttons */}
+            <div className="flex items-center gap-2.5 pt-2 border-t border-slate-800/80">
+              <button
+                type="submit"
+                className="flex-1 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400 text-slate-950 text-xs font-black py-3 rounded-xl shadow-lg shadow-teal-500/10 active:scale-95 transition-all cursor-pointer uppercase tracking-wider text-center"
+              >
+                KONFIRMASI
+              </button>
+              <button
+                type="button"
+                onClick={() => setPasswordModal((prev) => ({ ...prev, isOpen: false }))}
+                className="flex-1 bg-slate-800 hover:bg-slate-750 text-slate-300 text-xs font-black py-3 rounded-xl transition-all cursor-pointer border border-slate-700/80 active:scale-95 uppercase tracking-wider text-center"
+              >
+                BATALKAN
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   );
 }

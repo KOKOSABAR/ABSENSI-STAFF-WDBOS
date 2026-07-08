@@ -56,6 +56,7 @@ export default function AttendanceTable({
 
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("ALL");
+  const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [newStaffName, setNewStaffName] = useState("");
   const [newStaffCategory, setNewStaffCategory] = useState<"CS LINE" | "CS LC" | "KAPTEN KASIR" | "KASIR">("CS LINE");
   const [isAddingStaff, setIsAddingStaff] = useState(false);
@@ -82,7 +83,22 @@ export default function AttendanceTable({
   const filteredStaff = staffShifts.filter((staff) => {
     const matchesSearch = staff.name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = categoryFilter === "ALL" || staff.category === categoryFilter;
-    return matchesSearch && matchesCategory;
+    
+    let matchesStatus = true;
+    if (statusFilter !== "ALL") {
+      const scheduledShift = staff.schedule[selectedDay - 1];
+      if (statusFilter === "PAGI") {
+        matchesStatus = scheduledShift === "1";
+      } else if (statusFilter === "MALAM") {
+        matchesStatus = scheduledShift === "2";
+      } else if (statusFilter === "OFF") {
+        matchesStatus = scheduledShift === "OFF";
+      } else if (statusFilter === "CUTI") {
+        matchesStatus = scheduledShift === "CUTI";
+      }
+    }
+    
+    return matchesSearch && matchesCategory && matchesStatus;
   });
 
   const handleCellClick = (staffId: string, dayIndex: number) => {
@@ -278,6 +294,22 @@ ARJUN		1	1	1	1	1	1	1	1	OFF	2	2	2	2	2	2	2	2	2	2	1/2	OFF	1	1	1	1	1	1	1	1	1	1`);
                 <option value="CS LC" className="bg-slate-950 text-slate-300">CS LC</option>
                 <option value="KAPTEN KASIR" className="bg-slate-950 text-slate-300">KAPTEN KASIR</option>
                 <option value="KASIR" className="bg-slate-950 text-slate-300">KASIR</option>
+              </select>
+            </div>
+
+            <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5">
+              <Filter className="h-3.5 w-3.5 text-teal-400" />
+              <select
+                id="status-filter-select"
+                className="bg-transparent border-none text-xs text-slate-300 font-bold focus:outline-none pr-1 uppercase cursor-pointer"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+              >
+                <option value="ALL" className="bg-slate-950 text-slate-300">Semua Status</option>
+                <option value="PAGI" className="bg-slate-950 text-slate-300">PAGI</option>
+                <option value="MALAM" className="bg-slate-950 text-slate-300">MALAM</option>
+                <option value="OFF" className="bg-slate-950 text-slate-300">OFF</option>
+                <option value="CUTI" className="bg-slate-950 text-slate-300">CUTI</option>
               </select>
             </div>
           </div>
@@ -626,11 +658,7 @@ ARJUN		1	1	1	1	1	1	1	1	OFF	2	2	2	2	2	2	2	2	2	2	1/2	OFF	1	1	1	1	1	1	1	1	1	1`);
                         <td className="px-4 py-4 text-center">
                           <button
                             id={`delete-staff-${staff.id}`}
-                            onClick={() => {
-                              if (window.confirm(`Hapus staff ${staff.name} dari sistem?`)) {
-                                onDeleteStaff(staff.id);
-                              }
-                            }}
+                            onClick={() => onDeleteStaff(staff.id)}
                             className="text-slate-600 hover:text-rose-400 p-2 rounded-lg hover:bg-rose-950/20 border border-transparent hover:border-rose-900/30 transition-all inline-block cursor-pointer active:scale-95"
                             title="Hapus Staff"
                           >
@@ -844,11 +872,7 @@ HENGKI  2  2  2  2  2  OFF  1  1..."
 
                   <button
                     type="button"
-                    onClick={() => {
-                      if (window.confirm("PERINGATAN KERAS: Opsi ini akan MENGHAPUS SEMUA staff dan jadwal lama, digantikan sepenuhnya dengan data di pratinjau! Lanjutkan?")) {
-                        handleApplyImport("overwrite");
-                      }
-                    }}
+                    onClick={() => handleApplyImport("overwrite")}
                     className="flex items-center justify-center gap-2 bg-slate-950 hover:bg-black text-slate-300 text-xs font-black py-3 px-4 rounded-xl shadow-sm hover:shadow active:scale-95 transition-all cursor-pointer uppercase tracking-wider border border-slate-800"
                   >
                     <Trash2 className="h-4 w-4 text-rose-450" />
@@ -972,11 +996,7 @@ HENGKI  2  2  2  2  2  OFF  1  1..."
                         <td className="text-center py-2.5 bg-slate-950 group-hover:bg-slate-900/60 transition-all">
                           <button
                             id={`delete-staff-${staff.id}`}
-                            onClick={() => {
-                              if (window.confirm(`Hapus staff ${staff.name} dari sistem?`)) {
-                                onDeleteStaff(staff.id);
-                              }
-                            }}
+                            onClick={() => onDeleteStaff(staff.id)}
                             className="text-slate-600 hover:text-rose-450 p-1.5 rounded-lg hover:bg-rose-950/30 transition-colors inline-block cursor-pointer border border-transparent hover:border-rose-900/40"
                             title="Hapus Staff"
                           >

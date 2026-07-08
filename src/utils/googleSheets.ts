@@ -3,7 +3,7 @@
  * Mendukung Vercel, GitHub, local development, dan konfigurasi dinamis.
  */
 
-import { ClockInLog, StaffShift } from "../types";
+import { ClockInLog, StaffShift, PassportHandoverRecord, MasterPassport, CustomOfficer } from "../types";
 
 // Ambil URL default dari environment variables atau fallback ke URL yang diberikan user
 const DEFAULT_GAS_URL = import.meta.env.VITE_GAS_URL || "https://script.google.com/macros/s/AKfycbz5E660YNYF7EnMQUek84IiFhEU6inNcF-eRbEl6ovczHCMPyGsor0xosGJyyrFTUhj0g/exec";
@@ -125,11 +125,90 @@ export async function syncDeleteLog(logId: string): Promise<boolean> {
 }
 
 /**
+ * Sinkronisasi instan satu record paspor (tambah atau update) ke Google Sheets.
+ */
+export async function syncUpsertPassport(passport: PassportHandoverRecord): Promise<boolean> {
+  const url = getGasUrl();
+  if (!url) return false;
+
+  try {
+    await fetch(url, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "upsert_passport",
+        passport,
+      }),
+    });
+    return true;
+  } catch (error) {
+    console.error("Failed to sync upsert passport", error);
+    return false;
+  }
+}
+
+/**
+ * Sinkronisasi instan penghapusan satu record paspor dari Google Sheets.
+ */
+export async function syncDeletePassport(passportId: string): Promise<boolean> {
+  const url = getGasUrl();
+  if (!url) return false;
+
+  try {
+    await fetch(url, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "delete_passport",
+        passportId,
+      }),
+    });
+    return true;
+  } catch (error) {
+    console.error("Failed to sync delete passport", error);
+    return false;
+  }
+}
+
+/**
+ * Sinkronisasi cepat khusus jadwal staff ke Google Sheets.
+ */
+export async function syncScheduleToGoogleSheets(
+  staffShifts: StaffShift[],
+  selectedMonth: number,
+  selectedYear: number
+): Promise<boolean> {
+  const url = getGasUrl();
+  if (!url) return false;
+
+  try {
+    await fetch(url, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "sync_schedule",
+        selectedMonth,
+        selectedYear,
+        staffShifts,
+      }),
+    });
+    return true;
+  } catch (error) {
+    console.error("Failed to sync schedule", error);
+    return false;
+  }
+}
+
+/**
  * Sinkronisasi penuh semua staff dan log aktif ke Google Sheets.
  */
 export async function syncAllToGoogleSheets(
   staffShifts: StaffShift[],
   logs: ClockInLog[],
+  passports: PassportHandoverRecord[],
   selectedMonth: number,
   selectedYear: number
 ): Promise<{ success: boolean; message: string }> {
@@ -139,10 +218,6 @@ export async function syncAllToGoogleSheets(
   }
 
   try {
-    // Kita lakukan fetch biasa (dengan cors jika GAS sudah dikonfigurasi CORS, atau fallback ke no-cors)
-    // Untuk memberikan feedback yang akurat ke user, kita coba fetch dengan mode cors terlebih dahulu.
-    // Jika gagal karena CORS, kita berikan instruksi. Tapi GAS Web App yang dideploy dengan benar (diakses sebagai Anyone)
-    // biasanya mendukung CORS dengan redirect. Kita gunakan no-cors agar selalu aman dari block browser.
     await fetch(url, {
       method: "POST",
       mode: "no-cors",
@@ -155,12 +230,13 @@ export async function syncAllToGoogleSheets(
         selectedYear,
         staffShifts,
         logs,
+        passports,
       }),
     });
 
     return { 
       success: true, 
-      message: `BERHASIL MENSINKRONKAN ${staffShifts.length} STAF DAN ${logs.length} LOG KE SPREADSHEET SECARA PENUH.` 
+      message: `BERHASIL MENSINKRONKAN ${staffShifts.length} STAF, ${logs.length} LOG, DAN ${passports.length} DATA PASPOR KE SPREADSHEET SECARA PENUH.` 
     };
   } catch (error: any) {
     console.error("Full sync failed", error);
@@ -174,7 +250,15 @@ export async function syncAllToGoogleSheets(
 export async function fetchDataFromGoogleSheets(
   selectedMonth: number,
   selectedYear: number
-): Promise<{ success: boolean; staffShifts?: StaffShift[]; logs?: ClockInLog[]; message: string }> {
+): Promise<{
+  success: boolean;
+  staffShifts?: StaffShift[];
+  logs?: ClockInLog[];
+  passports?: PassportHandoverRecord[];
+  masterPassports?: MasterPassport[];
+  officers?: CustomOfficer[];
+  message: string;
+}> {
   const url = getGasUrl();
   if (!url) {
     return { success: false, message: "URL GOOGLE APPS SCRIPT BELUM DIKONFIGURASI" };
@@ -183,7 +267,6 @@ export async function fetchDataFromGoogleSheets(
   try {
     const response = await fetch(url, {
       method: "POST",
-      // Jangan pakai headers Content-Type: application/json agar tidak memicu OPTIONS preflight CORS request
       body: JSON.stringify({
         action: "read_data",
         selectedMonth,
@@ -203,6 +286,9 @@ export async function fetchDataFromGoogleSheets(
         success: true,
         staffShifts: data.staffShifts,
         logs: cleanedLogs,
+        passports: data.passports || [],
+        masterPassports: data.masterPassports || [],
+        officers: data.officers || [],
         message: "BERHASIL MEMUAT DATA DARI GOOGLE SPREADSHEET."
       };
     } else {

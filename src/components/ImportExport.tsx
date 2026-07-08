@@ -4,13 +4,15 @@
  */
 
 import { useState } from "react";
-import { StaffShift, ClockInLog, MONTHS_INDONESIAN } from "../types";
+import GOOGLE_APPS_SCRIPT_CODE from "../../GOOGLE_APPS_SCRIPT.js?raw";
+import { StaffShift, ClockInLog, MONTHS_INDONESIAN, PassportHandoverRecord } from "../types";
 import { FileDown, RotateCcw, Clipboard, Check, Upload, Download, Copy, AlertTriangle, Database, Link, RefreshCw, Eye, EyeOff, ShieldCheck, Cpu } from "lucide-react";
 import { getGasUrl, saveGasUrl, testGasConnection, syncAllToGoogleSheets } from "../utils/googleSheets";
 
 interface ImportExportProps {
   staffShifts: StaffShift[];
   logs: ClockInLog[];
+  passportRecords?: PassportHandoverRecord[];
   onResetToDefault: () => void;
   onImportState: (newState: { staffShifts: StaffShift[]; logs: ClockInLog[] }) => void;
   selectedMonth: number;
@@ -22,6 +24,7 @@ interface ImportExportProps {
 export default function ImportExport({
   staffShifts,
   logs,
+  passportRecords = [],
   onResetToDefault,
   onImportState,
   selectedMonth,
@@ -41,306 +44,6 @@ export default function ImportExport({
   const [syncAllMessage, setSyncAllMessage] = useState("");
   const [showGasCode, setShowGasCode] = useState(false);
   const [gasCodeCopied, setGasCodeCopied] = useState(false);
-
-  // Kode GAS untuk disalin user
-  const GOOGLE_APPS_SCRIPT_CODE = `/**
- * GOOGLE APPS SCRIPT (GAS) UNTUK SINKRONISASI OTOMATIS ABSENSI WDBOS
- * ----------------------------------------------------------------
- * Kode ini mendeteksi perubahan jadwal shift dan absen masuk secara real-time.
- * Membuat Nama Sheet dan Nama Header secara otomatis dan terformat rapi!
- */
-
-function doPost(e) {
-  try {
-    var data = JSON.parse(e.postData.contents);
-    var action = data.action;
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
-    
-    // Membuat sheet otomatis jika belum ada
-    var sheetShift = getOrCreateSheet(ss, "JADWAL_SHIFT");
-    var sheetLogs = getOrCreateSheet(ss, "ABSENSI_LOGS");
-    
-    // Membuat header otomatis & format artistik
-    initHeaders(sheetShift, "shift");
-    initHeaders(sheetLogs, "logs");
-    
-    if (action === "test") {
-      return jsonResponse({ status: "success", message: "KONEKSI SINKRONISASI AKTIF! SPREADSHEET SIAP DIGUNAKAN." });
-    }
-    
-    if (action === "upsert_log") {
-      var log = data.log;
-      if (!log) {
-        return jsonResponse({ status: "error", message: "DATA LOG TIDAK DITEMUKAN" });
-      }
-      upsertSingleLog(sheetLogs, log, data.selectedMonth, data.selectedYear);
-      return jsonResponse({ status: "success", message: "LOG BERHASIL DISINKRONISASI" });
-    }
-    
-    if (action === "delete_log") {
-      var logId = data.logId;
-      if (!logId) {
-        return jsonResponse({ status: "error", message: "ID LOG TIDAK DITEMUKAN" });
-      }
-      deleteSingleLog(sheetLogs, logId);
-      return jsonResponse({ status: "success", message: "LOG BERHASIL DIHAPUS DARI SPREADSHEET" });
-    }
-    
-    if (action === "sync_all") {
-      var staffShifts = data.staffShifts || [];
-      var logs = data.logs || [];
-      var selectedMonth = data.selectedMonth;
-      var selectedYear = data.selectedYear;
-      
-      syncAllShifts(sheetShift, staffShifts, selectedMonth, selectedYear);
-      syncAllLogs(sheetLogs, logs, selectedMonth, selectedYear);
-      
-      return jsonResponse({ 
-        status: "success", 
-        message: "SINKRONISASI PENUH BERHASIL! " + staffShifts.length + " STAF DAN " + logs.length + " LOG TELAH DISINKRONKAN." 
-      });
-    }
-    
-    if (action === "read_data") {
-      var readResult = handleReadData(data.selectedMonth, data.selectedYear);
-      return jsonResponse(readResult);
-    }
-    
-    return jsonResponse({ status: "error", message: "AKSI TIDAK DIKENAL" });
-    
-  } catch (error) {
-    return jsonResponse({ status: "error", message: error.toString() });
-  }
-}
-
-function doGet(e) {
-  return HtmlService.createHtmlOutput(
-    "<h1 style='font-family:sans-serif;color:#0f172a;'>KONEKSI SPREADSHEET ABSENSI WDBOS AKTIF</h1>" +
-    "<p style='font-family:sans-serif;color:#334155;'>Sistem Google Apps Script Web App Anda berjalan dengan baik dan lancar.</p>" +
-    "<p style='font-family:sans-serif;color:#14b8a6;font-weight:bold;'>Silakan salin URL Web App ini dan tempel di dashboard Absensi Staff!</p>"
-  );
-}
-
-function jsonResponse(obj) {
-  return ContentService.createTextOutput(JSON.stringify(obj))
-    .setMimeType(ContentService.MimeType.JSON);
-}
-
-function getOrCreateSheet(ss, name) {
-  var sheet = ss.getSheetByName(name);
-  if (!sheet) {
-    sheet = ss.insertSheet(name);
-  }
-  return sheet;
-}
-
-function initHeaders(sheet, type) {
-  if (sheet.getLastRow() > 0) return; // Headers sudah ada, lewati
-  
-  sheet.clear();
-  var headers = [];
-  if (type === "shift") {
-    headers = ["ID STAFF", "NAMA STAFF", "DIVISI", "BULAN", "TAHUN"];
-    for (var i = 1; i <= 31; i++) {
-      headers.push("HARI " + i);
-    }
-  } else if (type === "logs") {
-    headers = [
-      "ID LOG", 
-      "TANGGAL", 
-      "HARI", 
-      "BULAN", 
-      "TAHUN", 
-      "NAMA STAFF", 
-      "DIVISI", 
-      "SHIFT", 
-      "BATAS JAM MASUK", 
-      "JAM ABSEN", 
-      "STATUS", 
-      "WAKTU SINKRON"
-    ];
-  }
-  
-  sheet.appendRow(headers);
-  
-  // Mempercantik tampilan Header
-  var range = sheet.getRange(1, 1, 1, headers.length);
-  range.setFontWeight("bold");
-  range.setBackground("#0f172a"); // Slate 900
-  range.setFontColor("#14b8a6"); // Teal 400
-  range.setFontFamily("Arial");
-  range.setHorizontalAlignment("center");
-  sheet.setFrozenRows(1);
-}
-
-function upsertSingleLog(sheet, log, selectedMonth, selectedYear) {
-  var data = sheet.getDataRange().getValues();
-  var logId = log.id;
-  var rowIdx = -1;
-  
-  for (var i = 1; i < data.length; i++) {
-    if (data[i][0] === logId) {
-      rowIdx = i + 1;
-      break;
-    }
-  }
-  
-  var monthsIndo = ["JANUARI", "FEBRUARI", "MARET", "APRIL", "MEI", "JUNI", "JULI", "AGUSTUS", "SEPTEMBER", "OKTOBER", "NOVEMBER", "DESEMBER"];
-  var monthName = monthsIndo[selectedMonth] || "JULI";
-  var formattedDate = selectedYear + "-" + String(selectedMonth + 1).padStart(2, '0') + "-" + String(log.day).padStart(2, '0');
-  
-  var rowValues = [
-    logId,
-    formattedDate,
-    log.day,
-    monthName,
-    selectedYear,
-    log.staffName,
-    log.category,
-    log.shift,
-    log.shift === "1" ? "07:45:00" : "19:45:00",
-    log.clockInTime,
-    log.status,
-    new Date().toISOString()
-  ];
-  
-  if (rowIdx !== -1) {
-    var range = sheet.getRange(rowIdx, 1, 1, rowValues.length);
-    range.setValues([rowValues]);
-  } else {
-    sheet.appendRow(rowValues);
-  }
-}
-
-function deleteSingleLog(sheet, logId) {
-  var data = sheet.getDataRange().getValues();
-  for (var i = 1; i < data.length; i++) {
-    if (data[i][0] === logId) {
-      sheet.deleteRow(i + 1);
-      break;
-    }
-  }
-}
-
-function syncAllShifts(sheet, staffShifts, selectedMonth, selectedYear) {
-  sheet.clearContents();
-  initHeaders(sheet, "shift");
-  
-  if (staffShifts.length === 0) return;
-  
-  var monthsIndo = ["JANUARI", "FEBRUARI", "MARET", "APRIL", "MEI", "JUNI", "JULI", "AGUSTUS", "SEPTEMBER", "OKTOBER", "NOVEMBER", "DESEMBER"];
-  var monthName = monthsIndo[selectedMonth] || "JULI";
-  
-  var rows = [];
-  for (var i = 0; i < staffShifts.length; i++) {
-    var s = staffShifts[i];
-    var row = [
-      s.id,
-      s.name,
-      s.category,
-      monthName,
-      selectedYear
-    ];
-    for (var d = 0; d < 31; d++) {
-      row.push(s.schedule[d] || "");
-    }
-    rows.push(row);
-  }
-  
-  var range = sheet.getRange(2, 1, rows.length, rows[0].length);
-  range.setValues(rows);
-}
-
-function syncAllLogs(sheet, logs, selectedMonth, selectedYear) {
-  sheet.clearContents();
-  initHeaders(sheet, "logs");
-  
-  if (logs.length === 0) return;
-  
-  var monthsIndo = ["JANUARI", "FEBRUARI", "MARET", "APRIL", "MEI", "JUNI", "JULI", "AGUSTUS", "SEPTEMBER", "OKTOBER", "NOVEMBER", "DESEMBER"];
-  var monthName = monthsIndo[selectedMonth] || "JULI";
-  
-  var rows = [];
-  for (var i = 0; i < logs.length; i++) {
-    var log = logs[i];
-    var formattedDate = selectedYear + "-" + String(selectedMonth + 1).padStart(2, '0') + "-" + String(log.day).padStart(2, '0');
-    var row = [
-      log.id,
-      formattedDate,
-      log.day,
-      monthName,
-      selectedYear,
-      log.staffName,
-      log.category,
-      log.shift,
-      log.shift === "1" ? "07:45:00" : "19:45:00",
-      log.clockInTime,
-      log.status,
-      log.timestamp || new Date().toISOString()
-    ];
-    rows.push(row);
-  }
-  
-  var range = sheet.getRange(2, 1, rows.length, rows[0].length);
-  range.setValues(rows);
-}
-
-function handleReadData(selectedMonth, selectedYear) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var monthsIndo = ["JANUARI", "FEBRUARI", "MARET", "APRIL", "MEI", "JUNI", "JULI", "AGUSTUS", "SEPTEMBER", "OKTOBER", "NOVEMBER", "DESEMBER"];
-  var monthName = monthsIndo[selectedMonth] || "JULI";
-  
-  var staffShifts = [];
-  var sheetShift = ss.getSheetByName("JADWAL_SHIFT");
-  if (sheetShift && sheetShift.getLastRow() > 1) {
-    var data = sheetShift.getDataRange().getValues();
-    for (var i = 1; i < data.length; i++) {
-      var row = data[i];
-      if (row[0] && row[3] === monthName && Number(row[4]) === selectedYear) {
-        var schedule = [];
-        for (var d = 5; d < 36; d++) {
-          schedule.push(row[d] !== undefined ? String(row[d]) : "1");
-        }
-        staffShifts.push({
-          id: row[0],
-          name: row[1],
-          category: row[2],
-          schedule: schedule
-        });
-      }
-    }
-  }
-  
-  var logs = [];
-  var sheetLogs = ss.getSheetByName("ABSENSI_LOGS");
-  if (sheetLogs && sheetLogs.getLastRow() > 1) {
-    var data = sheetLogs.getDataRange().getValues();
-    for (var i = 1; i < data.length; i++) {
-      var row = data[i];
-      if (row[0] && row[3] === monthName && Number(row[4]) === selectedYear) {
-        logs.push({
-          id: row[0],
-          staffId: row[0].split("-").slice(2).join("-"),
-          staffName: row[5],
-          category: row[6],
-          day: Number(row[2]) || 1,
-          shift: String(row[7]) || "1",
-          clockInTime: row[9] || "",
-          status: row[10] || "ON TIME",
-          timestamp: row[11] || new Date().toISOString(),
-          month: selectedMonth,
-          year: selectedYear
-        });
-      }
-    }
-  }
-  
-  return {
-    success: true,
-    staffShifts: staffShifts,
-    logs: logs
-  };
-}`;
 
   const handleSaveGasUrl = () => {
     saveGasUrl(gasUrl);
@@ -378,7 +81,7 @@ function handleReadData(selectedMonth, selectedYear) {
     setSyncAllMessage("Sedang mengirim semua data shift dan log kehadiran ke Google Sheets...");
     setSyncStatus("syncing");
 
-    const result = await syncAllToGoogleSheets(staffShifts, logs, selectedMonth, selectedYear);
+    const result = await syncAllToGoogleSheets(staffShifts, logs, passportRecords, selectedMonth, selectedYear);
     if (result.success) {
       setSyncAllStatus("success");
       setSyncAllMessage(result.message);
@@ -754,12 +457,7 @@ function handleReadData(selectedMonth, selectedYear) {
         </p>
         <button
           id="reset-system-btn"
-          onClick={() => {
-            if (window.confirm("Apakah Anda yakin ingin menyetel ulang sistem? Semua perubahan dan log absensi akan terhapus selamanya.")) {
-              onResetToDefault();
-              alert(`Sistem berhasil disetel ulang ke kondisi bawaan ${MONTHS_INDONESIAN[selectedMonth]} ${selectedYear}!`);
-            }
-          }}
+          onClick={onResetToDefault}
           className="bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-all shadow-sm shadow-rose-100 cursor-pointer"
         >
           Reset Seluruh Sistem

@@ -179,11 +179,7 @@ export default function ClockInLogs({ logs, onDeleteLog, onClearAllLogs, selecte
           
           <button
             id="logs-clear-all-btn"
-            onClick={() => {
-              if (window.confirm("Hapus seluruh log absensi? Aksi ini tidak dapat dibatalkan.")) {
-                onClearAllLogs();
-              }
-            }}
+            onClick={onClearAllLogs}
             className="bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-semibold px-3.5 py-2 rounded-lg border border-rose-100 transition-colors cursor-pointer"
           >
             Hapus Semua Log
