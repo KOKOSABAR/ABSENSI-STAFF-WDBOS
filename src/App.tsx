@@ -49,6 +49,18 @@ export default function App() {
   // Timer ref for the post-write verification pull
   const pendingPullTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Timer ref for debouncing schedule sync to Google Sheets
+  const scheduleSyncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Cleanup debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (scheduleSyncTimeoutRef.current) {
+        clearTimeout(scheduleSyncTimeoutRef.current);
+      }
+    };
+  }, []);
+
   // Theme locked to black (dark mode)
   const theme = "black";
 
@@ -373,6 +385,18 @@ export default function App() {
     });
   };
 
+  const debouncedSyncSchedule = useCallback((shifts: StaffShift[], month: number, year: number) => {
+    if (scheduleSyncTimeoutRef.current) {
+      clearTimeout(scheduleSyncTimeoutRef.current);
+    }
+    setSyncStatus("syncing");
+    scheduleSyncTimeoutRef.current = setTimeout(() => {
+      syncScheduleToGoogleSheets(shifts, month, year)
+        .then((ok) => setSyncStatus(ok ? "synced" : "error"))
+        .catch(() => setSyncStatus("error"));
+    }, 2000);
+  }, []);
+
   const handleUpdateSchedule = (staffId: string, dayIndex: number, newValue: string) => {
     recordLocalWrite();
     const updated = staffShifts.map((staff) => {
@@ -385,12 +409,9 @@ export default function App() {
     });
     setStaffShifts(updated);
 
-    // Kirim cepat khusus jadwal ke Google Sheets
+    // Kirim cepat khusus jadwal ke Google Sheets (menggunakan debounce agar responsif)
     if (getGasUrl()) {
-      setSyncStatus("syncing");
-      syncScheduleToGoogleSheets(updated, selectedMonth, selectedYear)
-        .then((ok) => setSyncStatus(ok ? "synced" : "error"))
-        .catch(() => setSyncStatus("error"));
+      debouncedSyncSchedule(updated, selectedMonth, selectedYear);
     }
   };
 
@@ -410,12 +431,9 @@ export default function App() {
     const updated = [...staffShifts, newStaff];
     setStaffShifts(updated);
 
-    // Kirim cepat khusus jadwal ke Google Sheets
+    // Kirim cepat khusus jadwal ke Google Sheets (menggunakan debounce)
     if (getGasUrl()) {
-      setSyncStatus("syncing");
-      syncScheduleToGoogleSheets(updated, selectedMonth, selectedYear)
-        .then((ok) => setSyncStatus(ok ? "synced" : "error"))
-        .catch(() => setSyncStatus("error"));
+      debouncedSyncSchedule(updated, selectedMonth, selectedYear);
     }
   };
 

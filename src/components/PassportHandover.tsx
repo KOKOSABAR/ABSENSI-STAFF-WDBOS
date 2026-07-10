@@ -108,35 +108,47 @@ export default function PassportHandover({
     setInputModal((prev) => ({ ...prev, isOpen: false }));
   };
 
-  // Determine active staff scheduled for today or who currently have passports held or have notes logged
+  const currentDateStr = `${selectedYear}-${String(selectedMonth + 1).padStart(2, "0")}-${String(selectedDay).padStart(2, "0")}`;
+
+  // Determine active staff scheduled for today or who have passport records specifically on current date
   const pagiStaff = staffShifts.filter((s) => {
     const shiftCode = s.schedule[selectedDay - 1];
-    const hasActiveRecord = records.some(
-      (r) => r.staffName === s.name && (r.shift || "PAGI").toUpperCase() === "PAGI" && !r.dateOut
+    const hasDayRecord = records.some(
+      (r) => r.staffName === s.name && 
+             (r.shift || "PAGI").toUpperCase() === "PAGI" && 
+             r.dateIn === currentDateStr
     );
-    return shiftCode === "1" || hasActiveRecord;
+    return shiftCode === "1" || hasDayRecord;
   });
 
   const malamStaff = staffShifts.filter((s) => {
     const shiftCode = s.schedule[selectedDay - 1];
-    const hasActiveRecord = records.some(
-      (r) => r.staffName === s.name && (r.shift || "PAGI").toUpperCase() === "MALAM" && !r.dateOut
+    const hasDayRecord = records.some(
+      (r) => r.staffName === s.name && 
+             (r.shift || "PAGI").toUpperCase() === "MALAM" && 
+             r.dateIn === currentDateStr
     );
-    return shiftCode === "2" || hasActiveRecord;
+    return shiftCode === "2" || hasDayRecord;
   });
 
   // Filter lists based on search criteria
   const filterStaffList = (list: StaffShift[], shiftName: "PAGI" | "MALAM") => {
     return list.filter((s) => {
       const activeRecord = records.find(
-        (r) => r.staffName === s.name && !r.dateOut && (r.shift || "PAGI").toUpperCase() === shiftName
+        (r) => r.staffName === s.name && !r.dateOut && (r.shift || "PAGI").toUpperCase() === shiftName && r.dateIn === currentDateStr
       );
+      const returnedRecord = [...records]
+        .reverse()
+        .find(
+          (r) => r.staffName === s.name && r.dateOut && (r.shift || "PAGI").toUpperCase() === shiftName && r.dateIn === currentDateStr
+        );
+      const currentRecord = activeRecord || returnedRecord;
       const term = searchTerm.toLowerCase();
       return (
         s.name.toLowerCase().includes(term) ||
         s.category.toLowerCase().includes(term) ||
-        (activeRecord?.passportNo || "").toLowerCase().includes(term) ||
-        (activeRecord?.notes || "").toLowerCase().includes(term)
+        (currentRecord?.passportNo || "").toLowerCase().includes(term) ||
+        (currentRecord?.notes || "").toLowerCase().includes(term)
       );
     });
   };
@@ -318,12 +330,12 @@ export default function PassportHandover({
               ) : (
                 staffList.flatMap((staff, index) => {
                   const activeRecord = records.find(
-                    (r) => r.staffName === staff.name && !r.dateOut && (r.shift || "PAGI").toUpperCase() === currentShiftStr
+                    (r) => r.staffName === staff.name && !r.dateOut && (r.shift || "PAGI").toUpperCase() === currentShiftStr && r.dateIn === currentDateStr
                   );
                   const returnedRecord = [...records]
                     .reverse()
                     .find(
-                      (r) => r.staffName === staff.name && r.dateOut && (r.shift || "PAGI").toUpperCase() === currentShiftStr
+                      (r) => r.staffName === staff.name && r.dateOut && (r.shift || "PAGI").toUpperCase() === currentShiftStr && r.dateIn === currentDateStr
                     );
 
                   const isHeld = activeRecord && !!activeRecord.dateIn;

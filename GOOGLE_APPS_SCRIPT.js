@@ -245,7 +245,7 @@ function handleSyncSchedule(staffShifts, selectedMonth, selectedYear) {
     });
     sheetJadwal.getRange(2, 1, jadwalRows.length, jadwalHeaders.length).setValues(jadwalRows);
   }
-  sheetJadwal.autoResizeColumns(1, 5);
+  // sheetJadwal.autoResizeColumns(1, 5); // Dinonaktifkan karena memperlambat sinkronisasi rutin
   return true;
 }
 
@@ -389,18 +389,25 @@ function handleSyncAll(staffShifts, logs, passports, selectedMonth, selectedYear
 
   var timestamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm:ss");
 
-  // Helper untuk mencatat history ke sheet pagi atau malam sesuai shift staff
-  function appendHistoryLog(ppt, aksi, keterangan) {
+  // Tampungan data riwayat untuk batch write
+  var historyPagiRows = [];
+  var historyMalamRows = [];
+
+  function queueHistoryLog(ppt, aksi, keterangan) {
     var shift = (ppt.shift || "PAGI").toUpperCase();
-    var targetSheet = shift === "MALAM" ? sheetHistoryMalam : sheetHistoryPagi;
-    targetSheet.appendRow([
+    var row = [
       timestamp,
       ppt.staffName,
       ppt.passportNo,
       aksi,
       ppt.officerName || "-",
       keterangan
-    ]);
+    ];
+    if (shift === "MALAM") {
+      historyMalamRows.push(row);
+    } else {
+      historyPagiRows.push(row);
+    }
   }
 
   // 3. Bandingkan data lama vs baru untuk mencatat riwayat perubahan (history)
@@ -408,17 +415,17 @@ function handleSyncAll(staffShifts, logs, passports, selectedMonth, selectedYear
     var matchingNew = passports.find(function(n) { return n.id === oldPpt.id; });
     if (!matchingNew) {
       // Data dihapus
-      appendHistoryLog(oldPpt, "HAPUS PENDATAAN", "HAPUS DARI DAFTAR");
+      queueHistoryLog(oldPpt, "HAPUS PENDATAAN", "HAPUS DARI DAFTAR");
     } else {
       if (!oldPpt.dateOut && matchingNew.dateOut) {
         // Baru pulang/checkout
-        appendHistoryLog(matchingNew, "KEMBALIKAN PASPOR", matchingNew.notes || "SUDAH DIKEMBALIKAN");
+        queueHistoryLog(matchingNew, "KEMBALIKAN PASPOR", matchingNew.notes || "SUDAH DIKEMBALIKAN");
       } else if (oldPpt.notes !== matchingNew.notes) {
         // Edit catatan
-        appendHistoryLog(matchingNew, "EDIT CATATAN", "DARI: '" + oldPpt.notes + "' MENJADI: '" + matchingNew.notes + "'");
+        queueHistoryLog(matchingNew, "EDIT CATATAN", "DARI: '" + oldPpt.notes + "' MENJADI: '" + matchingNew.notes + "'");
       } else if (oldPpt.passportNo !== matchingNew.passportNo) {
         // Edit nomor paspor
-        appendHistoryLog(matchingNew, "EDIT NOMOR PASPOR", "DARI: '" + oldPpt.passportNo + "' MENJADI: '" + matchingNew.passportNo + "'");
+        queueHistoryLog(matchingNew, "EDIT NOMOR PASPOR", "DARI: '" + oldPpt.passportNo + "' MENJADI: '" + matchingNew.passportNo + "'");
       }
     }
   });
@@ -427,9 +434,17 @@ function handleSyncAll(staffShifts, logs, passports, selectedMonth, selectedYear
     var matchingOld = oldPassports.find(function(o) { return o.id === newPpt.id; });
     if (!matchingOld && newPpt.dateIn) {
       // Check-in baru
-      appendHistoryLog(newPpt, "TERIMA PASPOR", newPpt.notes || "PASPOR DITERIMA DI KANTOR");
+      queueHistoryLog(newPpt, "TERIMA PASPOR", newPpt.notes || "PASPOR DITERIMA DI KANTOR");
     }
   });
+
+  // Tulis data riwayat secara massal (batch write) agar super cepat
+  if (historyPagiRows.length > 0) {
+    sheetHistoryPagi.getRange(sheetHistoryPagi.getLastRow() + 1, 1, historyPagiRows.length, 6).setValues(historyPagiRows);
+  }
+  if (historyMalamRows.length > 0) {
+    sheetHistoryMalam.getRange(sheetHistoryMalam.getLastRow() + 1, 1, historyMalamRows.length, 6).setValues(historyMalamRows);
+  }
 
   // 4. Overwrite data paspor aktif ke Google Sheets
   sheetPassports.clearContents();
@@ -484,14 +499,14 @@ function handleSyncAll(staffShifts, logs, passports, selectedMonth, selectedYear
     }
   }
 
-  // Auto-resize columns agar tidak terpotong
-  sheetJadwal.autoResizeColumns(1, 5);
-  sheetLogs.autoResizeColumns(1, 6);
-  sheetPassports.autoResizeColumns(1, passportHeaders.length);
-  sheetMaster.autoResizeColumns(1, 3);
-  sheetPetugas.autoResizeColumns(1, 2);
-  sheetHistoryPagi.autoResizeColumns(1, 6);
-  sheetHistoryMalam.autoResizeColumns(1, 6);
+  // Auto-resize columns dinonaktifkan untuk mempercepat sinkronisasi rutin
+  // sheetJadwal.autoResizeColumns(1, 5);
+  // sheetLogs.autoResizeColumns(1, 6);
+  // sheetPassports.autoResizeColumns(1, passportHeaders.length);
+  // sheetMaster.autoResizeColumns(1, 3);
+  // sheetPetugas.autoResizeColumns(1, 2);
+  // sheetHistoryPagi.autoResizeColumns(1, 6);
+  // sheetHistoryMalam.autoResizeColumns(1, 6);
   
   return true;
 }
